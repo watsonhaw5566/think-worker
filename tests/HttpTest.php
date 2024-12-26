@@ -68,7 +68,7 @@ test('tests json post', function () {
         ->toBe(json_encode($data));
 });
 
-test('tests put request', function () {
+test('tests put and delete request', function () {
     $client = new Client([
         'base_uri'    => 'http://127.0.0.1:8080',
         'cookies'     => true,
@@ -78,7 +78,16 @@ test('tests put request', function () {
     $response = $client->put('/');
 
     expect($response->getStatusCode())
-        ->toBe(200);
+        ->toBe(200)
+        ->and($response->getBody()->getContents())
+        ->toBe('put');
+
+    $response = $client->delete('/');
+
+    expect($response->getStatusCode())
+        ->toBe(200)
+        ->and($response->getBody()->getContents())
+        ->toBe('delete');
 });
 
 test('tests file response', function () {

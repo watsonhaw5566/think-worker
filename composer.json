@@ -1,6 +1,6 @@
 {
     "name": "topthink/think-worker",
-    "description": "workerman extend for thinkphp6.0",
+    "description": "workerman extend for thinkphp",
     "license": "Apache-2.0",
     "authors": [
         {

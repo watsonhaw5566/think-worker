@@ -7,7 +7,11 @@ Route::get('/', function () {
 });
 
 Route::put('/', function () {
+    return 'put';
+});
 
+Route::delete('/', function () {
+    return 'delete';
 });
 
 Route::get('test', 'index/test');
