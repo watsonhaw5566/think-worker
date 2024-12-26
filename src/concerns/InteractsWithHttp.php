@@ -39,6 +39,8 @@ trait InteractsWithHttp
 
     public function createHttpServer()
     {
+        $this->preloadHttp();
+
         $host    = $this->getConfig('http.host');
         $port    = $this->getConfig('http.port');
         $options = $this->getConfig('http.options', []);
@@ -46,10 +48,6 @@ trait InteractsWithHttp
         $server = new Worker("http://{$host}:{$port}", $options);
 
         $server->reusePort = true;
-
-        $server->onWorkerStart = function () {
-            $this->prepareHttp();
-        };
 
         $server->onMessage = function (TcpConnection $connection, WorkerRequest $request) {
             $this->onRequest($connection, $request);
