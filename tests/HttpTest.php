@@ -8,7 +8,13 @@ $process = null;
 beforeAll(function () use (&$process) {
     $process = new Process(['php', 'think', 'worker'], __DIR__ . '/stub/');
     $process->start();
+    $wait = 0;
+
     while (!$process->getOutput()) {
+        $wait++;
+        if ($wait > 10) {
+            throw new Exception('server start failed');
+        }
         sleep(1);
     }
 });
@@ -18,14 +24,16 @@ afterAll(function () use (&$process) {
     $process->stop();
 });
 
-test('tests callback route', function () {
-    $client = new Client([
+beforeEach(function () {
+    $this->client = new Client([
         'base_uri'    => 'http://127.0.0.1:8080',
         'cookies'     => true,
         'http_errors' => false,
     ]);
+});
 
-    $response = $client->get('/');
+it('callback route', function () {
+    $response = $this->client->get('/');
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -33,15 +41,10 @@ test('tests callback route', function () {
         ->toBe('hello world');
 });
 
-test('tests controller route', function () {
-    $jar    = new CookieJar();
-    $client = new Client([
-        'base_uri'    => 'http://127.0.0.1:8080',
-        'cookies'     => $jar,
-        'http_errors' => false,
-    ]);
+it('controller route', function () {
+    $jar = new CookieJar();
 
-    $response = $client->get('/test');
+    $response = $this->client->get('/test', ['cookies' => $jar]);
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -51,16 +54,12 @@ test('tests controller route', function () {
         ->toBe('think');
 });
 
-test('tests json post', function () {
-    $client   = new Client([
-        'base_uri'    => 'http://127.0.0.1:8080',
-        'cookies'     => true,
-        'http_errors' => false,
-    ]);
+it('json post', function () {
+
     $data     = [
         'name' => 'think',
     ];
-    $response = $client->post('/json', [
+    $response = $this->client->post('/json', [
         'json' => $data,
     ]);
 
@@ -70,21 +69,15 @@ test('tests json post', function () {
         ->toBe(json_encode($data));
 });
 
-test('tests put and delete request', function () {
-    $client = new Client([
-        'base_uri'    => 'http://127.0.0.1:8080',
-        'cookies'     => true,
-        'http_errors' => false,
-    ]);
-
-    $response = $client->put('/');
+it('put and delete request', function () {
+    $response = $this->client->put('/');
 
     expect($response->getStatusCode())
         ->toBe(200)
         ->and($response->getBody()->getContents())
         ->toBe('put');
 
-    $response = $client->delete('/');
+    $response = $this->client->delete('/');
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -92,14 +85,8 @@ test('tests put and delete request', function () {
         ->toBe('delete');
 });
 
-test('tests file response', function () {
-    $client = new Client([
-        'base_uri'    => 'http://127.0.0.1:8080',
-        'cookies'     => true,
-        'http_errors' => false,
-    ]);
-
-    $response = $client->get('/static/asset.txt');
+it('file response', function () {
+    $response = $this->client->get('/static/asset.txt');
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -107,15 +94,8 @@ test('tests file response', function () {
         ->toBe(file_get_contents(__DIR__ . '/stub/public/asset.txt'));
 });
 
-test('tests hot update', function () {
-
-    $client = new Client([
-        'base_uri'    => 'http://127.0.0.1:8080',
-        'cookies'     => true,
-        'http_errors' => false,
-    ]);
-
-    $response = $client->get('/hot');
+it('hot update', function () {
+    $response = $this->client->get('/hot');
 
     expect($response->getStatusCode())
         ->toBe(404);
@@ -134,7 +114,7 @@ PHP;
 
     sleep(2);
 
-    $response = $client->get('/hot');
+    $response = $this->client->get('/hot');
 
     expect($response->getStatusCode())
         ->toBe(200)
