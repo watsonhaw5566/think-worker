@@ -25,20 +25,12 @@ class Server extends Command
     public function configure()
     {
         $this->setName('worker')
-            ->addOption(
-                'env',
-                'E',
-                Option::VALUE_REQUIRED,
-                'Environment name',
-                ''
-            )
             ->setDescription('Workerman Server for ThinkPHP');
     }
 
     public function handle(Manager $manager)
     {
-        $envName = $this->input->getOption('env');
-        $manager->start($envName);
+        $manager->start();
     }
 
 }

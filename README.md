@@ -45,21 +45,14 @@ Route::get('static/:path', function (string $path) {
 监听`worker.init`事件 注入`Manager`对象，调用addWorker方法添加
 ~~~php
 use think\worker\Manager;
-use Workerman\Worker;
+use \think\worker\Worker;
 
 //...
 
 public function handle(Manager $manager){
-    $manager->addWorker(function(){
-        $worker = new Worker();
-
-        $worker->onWorkerStart = function () {
-            //...一些处理
-        };
-        
+   $worker = $manager->addWorker(function(Worker $worker){
         //..其他回调或处理
-
-        return $worker;
+        //动态添加监听可参考 https://www.workerman.net/doc/workerman/worker/listen.html
     });
 }
 

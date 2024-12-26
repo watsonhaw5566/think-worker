@@ -6,9 +6,9 @@ class Worker extends \Workerman\Worker
 {
     public static function runAll()
     {
+        static::checkSapiEnv();
         static::init();
         static::lock();
-        static::daemonize();
         static::initWorkers();
         static::installSignal();
         static::saveMasterPid();

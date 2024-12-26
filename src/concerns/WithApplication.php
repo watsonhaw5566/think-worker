@@ -20,11 +20,11 @@ trait WithApplication
      */
     protected $app;
 
-    protected function prepareApplication(string $envName)
+    protected function prepareApplication()
     {
         if (!$this->app instanceof WorkerApp) {
             $this->app = new WorkerApp($this->container->getRootPath());
-            $this->app->setEnvName($envName);
+
             $this->app->bind(WorkerApp::class, App::class);
             $this->app->bind(Manager::class, $this);
 

@@ -32,30 +32,30 @@ trait InteractsWithHttp
     protected function prepareHttp()
     {
         if ($this->getConfig('http.enable', true)) {
-            $this->addWorker([$this, 'createHttpServer']);
+            $workerNum = $this->getConfig('http.worker_num', 2);
+            $this->addWorker([$this, 'createHttpServer'], 'http server', $workerNum);
         }
     }
 
     public function createHttpServer()
     {
-        $workerNum = $this->getConfig('http.worker_num', 2);
-        $host      = $this->getConfig('http.host');
-        $port      = $this->getConfig('http.port');
-        $options   = $this->getConfig('http.options', []);
+        $host    = $this->getConfig('http.host');
+        $port    = $this->getConfig('http.port');
+        $options = $this->getConfig('http.options', []);
 
         $server = new Worker("http://{$host}:{$port}", $options);
+
+        $server->reusePort = true;
 
         $server->onWorkerStart = function () {
             $this->prepareHttp();
         };
 
-        $server->name      = 'http server';
-        $server->count     = $workerNum;
         $server->onMessage = function (TcpConnection $connection, WorkerRequest $request) {
             $this->onRequest($connection, $request);
         };
 
-        return $server;
+        $server->listen();
     }
 
     protected function preloadHttp()

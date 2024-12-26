@@ -3,9 +3,8 @@
 namespace think\worker\concerns;
 
 use think\App;
-use think\worker\Pool;
 use think\worker\Watcher;
-use Workerman\Worker;
+use think\worker\Worker;
 
 /**
  * Trait InteractsWithServer
@@ -14,87 +13,54 @@ use Workerman\Worker;
 trait InteractsWithServer
 {
 
-    /**
-     * @var array
-     */
-    protected $startFuncMap = [];
-
-    protected $workerId;
-
-    /** @var Pool */
-    protected $pool;
-
-    public function addWorker(callable $func): self
+    public function addWorker(callable $func, $name = 'none', int $count = 1): Worker
     {
-        $this->startFuncMap[] = $func;
-        return $this;
+        $worker = new Worker();
+
+        $worker->name  = $name;
+        $worker->count = $count;
+
+        $worker->onWorkerStart = function (Worker $worker) use ($func) {
+            $this->clearCache();
+            $this->prepareApplication();
+
+            $this->triggerEvent('workerStart', $worker);
+
+            $func($worker);
+        };
+
+        return $worker;
     }
 
     /**
      * 启动服务
-     * @param string $envName 环境变量标识
      */
-    public function start(string $envName): void
+    public function start(): void
     {
         $this->initialize();
         $this->triggerEvent('init');
 
         //热更新
         if ($this->getConfig('hot_update.enable', false)) {
-            $this->addHotUpdateProcess();
+            $this->addHotUpdateWorker();
         }
 
-        $pool = $this->createPool();
-
-        $pool->onWorkerStart(function (Worker $worker) use ($envName) {
-
-            $this->clearCache();
-            $this->prepareApplication($envName);
-
-            $this->triggerEvent('workerStart', $worker);
-        });
-
-        $pool->start();
-    }
-
-    public function getWorkerId()
-    {
-        return $this->workerId;
-    }
-
-    /**
-     * 获取当前工作进程池对象
-     * @return Pool
-     */
-    public function getPool()
-    {
-        return $this->pool;
-    }
-
-    protected function createPool()
-    {
-        return new Pool($this->startFuncMap);
+        Worker::runAll();
     }
 
     /**
      * 热更新
      */
-    protected function addHotUpdateProcess()
+    protected function addHotUpdateWorker()
     {
-        $this->addWorker(function () {
-            $worker             = new Worker();
-            $worker->name       = 'hot update';
-            $worker->reloadable = false;
+        $worker = $this->addWorker(function () {
+            $watcher = $this->container->make(Watcher::class);
+            $watcher->watch(function () {
+                posix_kill(posix_getppid(), SIGUSR1);
+            });
+        }, 'hot update');
 
-            $worker->onWorkerStart = function () {
-                $watcher = $this->container->make(Watcher::class);
-                $watcher->watch(function () {
-                    posix_kill(posix_getppid(), SIGUSR1);
-                });
-            };
-
-            return $worker;
-        });
+        $worker->reloadable = false;
     }
 
     /**
