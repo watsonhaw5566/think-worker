@@ -8,7 +8,9 @@ $process = null;
 beforeAll(function () use (&$process) {
     $process = new Process(['php', 'think', 'worker'], __DIR__ . '/stub/');
     $process->start();
-    usleep(250000);
+    while (!$process->getOutput()) {
+        sleep(1);
+    }
 });
 
 afterAll(function () use (&$process) {
