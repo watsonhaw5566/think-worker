@@ -1,0 +1,19 @@
+<?php
+
+use think\facade\Route;
+
+Route::get('/', function () {
+    return 'hello world';
+});
+
+Route::put('/', function () {
+
+});
+
+Route::get('test', 'index/test');
+Route::post('json', 'index/json');
+
+Route::get('static/:path', function (string $path) {
+    $filename = public_path() . $path;
+    return new \think\worker\response\File($filename);
+})->pattern(['path' => '.*\.\w+$']);

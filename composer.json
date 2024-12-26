@@ -9,10 +9,8 @@
         }
     ],
     "require": {
-        "workerman/workerman": "^3.5.23",
-        "workerman/gateway-worker": "^3.0.0",
-        "topthink/framework": "^8.0",
-        "ext-fileinfo": "*"
+        "workerman/workerman": "^4.2",
+        "topthink/framework": "^8.0"
     },
     "autoload": {
         "psr-4": {
@@ -20,16 +18,28 @@
         }
     },
     "extra": {
-        "think":{
-            "services":[
+        "think": {
+            "services": [
                 "think\\worker\\Service"
             ],
-            "config":{
-                "worker": "src/config/worker.php",
-                "worker_server": "src/config/server.php",
-                "gateway_worker": "src/config/gateway.php"
+            "config": {
+                "worker": "src/config/worker.php"
             }
         }
     },
-    "minimum-stability": "dev"
+    "require-dev": {
+        "pestphp/pest": "^3.7",
+        "mockery/mockery": "^1.6",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "app\\": "tests/stub/app"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
 }
