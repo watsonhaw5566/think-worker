@@ -26,10 +26,10 @@ class Sandbox
 {
     use ModifyProperty;
 
-    /** @var WorkerApp */
+    /** @var WorkerApp|null */
     protected $snapshot;
 
-    /** @var WorkerApp */
+    /** @var Container */
     protected $app;
 
     /** @var Config */

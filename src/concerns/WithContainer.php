@@ -31,7 +31,7 @@ trait WithContainer
     /**
      * 获取配置
      * @param string $name
-     * @param null $default
+     * @param mixed $default
      * @return mixed
      */
     public function getConfig(string $name, $default = null)
@@ -42,7 +42,7 @@ trait WithContainer
     /**
      * 触发事件
      * @param string $event
-     * @param null $params
+     * @param mixed $params
      */
     public function triggerEvent(string $event, $params = null): void
     {

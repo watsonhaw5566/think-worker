@@ -2,11 +2,6 @@
 
 namespace think\worker;
 
-/**
- * Class Http
- * @package think\swoole
- * @property $request
- */
 class Http extends \think\Http
 {
 

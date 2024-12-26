@@ -67,11 +67,13 @@ class File extends Response
 
     public function setAutoContentType()
     {
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if (extension_loaded('fileinfo')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
 
-        $mimeType = finfo_file($finfo, $this->file->getPathname());
-        if ($mimeType) {
-            $this->header['Content-Type'] = $mimeType;
+            $mimeType = finfo_file($finfo, $this->file->getPathname());
+            if ($mimeType) {
+                $this->header['Content-Type'] = $mimeType;
+            }
         }
     }
 
@@ -88,8 +90,12 @@ class File extends Response
 
     public function setAutoLastModified()
     {
-        $date = DateTime::createFromFormat('U', $this->file->getMTime());
-        return $this->lastModified($date->format('D, d M Y H:i:s') . ' GMT');
+        $mTime = $this->file->getMTime();
+        if ($mTime) {
+            $date = DateTime::createFromFormat('U', (string) $mTime);
+            $this->lastModified($date->format('D, d M Y H:i:s') . ' GMT');
+        }
+        return $this;
     }
 
     public function setAutoEtag()

@@ -138,6 +138,6 @@ PHP;
         ->toBe(200)
         ->and($response->getBody()->getContents())
         ->toBe('hot');
-
-    unlink(__DIR__ . '/stub/route/hot.php');
-});
+})->after(function () {
+    @unlink(__DIR__ . '/stub/route/hot.php');
+})->skipOnWindows();
