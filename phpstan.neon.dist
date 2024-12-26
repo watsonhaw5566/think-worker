@@ -3,6 +3,8 @@ parameters:
 	paths:
 		- src
 		- tests
+	universalObjectCratesClasses:
+		- PHPUnit\Framework\TestCase
 	ignoreErrors:
 		- '#Function root_path not found.#'
 		- '#Function env not found.#'
