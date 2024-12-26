@@ -166,7 +166,7 @@ class Sandbox
     {
         $app = $this->getBaseApp();
 
-        $services = $this->config->get('swoole.services', []);
+        $services = $this->config->get('worker.services', []);
 
         foreach ($services as $service) {
             if (class_exists($service) && !in_array($service, $this->services)) {
@@ -192,7 +192,7 @@ class Sandbox
             ResetPaginator::class,
         ];
 
-        $resetters = array_merge($resetters, $this->config->get('swoole.resetters', []));
+        $resetters = array_merge($resetters, $this->config->get('worker.resetters', []));
 
         foreach ($resetters as $resetter) {
             $resetterClass = $app->make($resetter);

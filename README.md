@@ -35,7 +35,7 @@ http://localhost:8080
 ```php
 Route::get('static/:path', function (string $path) {
     $filename = public_path() . $path;
-    return new \think\swoole\response\File($filename);
+    return new \think\worker\response\File($filename);
 })->pattern(['path' => '.*\.\w+$']);
 ```
 
