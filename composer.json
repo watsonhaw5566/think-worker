@@ -31,6 +31,7 @@
     "require-dev": {
         "pestphp/pest": "^3.7",
         "guzzlehttp/guzzle": "^7.0",
+        "topthink/think-queue": "^3.0",
         "phpstan/phpstan": "^2.0"
     },
     "autoload-dev": {

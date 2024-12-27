@@ -17,6 +17,11 @@ return [
         'worker_num' => 2,
         'options'    => [],
     ],
+    //队列
+    'queue'      => [
+        'enable'  => false,
+        'workers' => [],
+    ],
     'hot_update' => [
         'enable'  => env('APP_DEBUG', false),
         'name'    => ['*.php'],

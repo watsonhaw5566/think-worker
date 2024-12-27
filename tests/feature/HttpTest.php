@@ -1,12 +1,12 @@
 <?php
 
+use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use Symfony\Component\Process\Process;
-use GuzzleHttp\Client;
 
 $process = null;
 beforeAll(function () use (&$process) {
-    $process = new Process(['php', 'think', 'worker'], __DIR__ . '/stub/');
+    $process = new Process(['php', 'think', 'worker'], STUB_DIR);
     $process->start();
     $wait = 0;
 
@@ -25,15 +25,16 @@ afterAll(function () use (&$process) {
 });
 
 beforeEach(function () {
-    $this->client = new Client([
+    $this->httpClient = new Client([
         'base_uri'    => 'http://127.0.0.1:8080',
         'cookies'     => true,
         'http_errors' => false,
+        'timeout'     => 1,
     ]);
 });
 
 it('callback route', function () {
-    $response = $this->client->get('/');
+    $response = $this->httpClient->get('/');
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -44,7 +45,7 @@ it('callback route', function () {
 it('controller route', function () {
     $jar = new CookieJar();
 
-    $response = $this->client->get('/test', ['cookies' => $jar]);
+    $response = $this->httpClient->get('/test', ['cookies' => $jar]);
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -59,7 +60,7 @@ it('json post', function () {
     $data     = [
         'name' => 'think',
     ];
-    $response = $this->client->post('/json', [
+    $response = $this->httpClient->post('/json', [
         'json' => $data,
     ]);
 
@@ -70,14 +71,14 @@ it('json post', function () {
 });
 
 it('put and delete request', function () {
-    $response = $this->client->put('/');
+    $response = $this->httpClient->put('/');
 
     expect($response->getStatusCode())
         ->toBe(200)
         ->and($response->getBody()->getContents())
         ->toBe('put');
 
-    $response = $this->client->delete('/');
+    $response = $this->httpClient->delete('/');
 
     expect($response->getStatusCode())
         ->toBe(200)
@@ -86,16 +87,16 @@ it('put and delete request', function () {
 });
 
 it('file response', function () {
-    $response = $this->client->get('/static/asset.txt');
+    $response = $this->httpClient->get('/static/asset.txt');
 
     expect($response->getStatusCode())
         ->toBe(200)
         ->and($response->getBody()->getContents())
-        ->toBe(file_get_contents(__DIR__ . '/stub/public/asset.txt'));
+        ->toBe(file_get_contents(STUB_DIR . '/public/asset.txt'));
 });
 
 it('hot update', function () {
-    $response = $this->client->get('/hot');
+    $response = $this->httpClient->get('/hot');
 
     expect($response->getStatusCode())
         ->toBe(404);
@@ -110,16 +111,16 @@ Route::get('/hot', function () {
 });
 PHP;
 
-    file_put_contents(__DIR__ . '/stub/route/hot.php', $route);
+    file_put_contents(STUB_DIR . '/route/hot.php', $route);
 
     sleep(2);
 
-    $response = $this->client->get('/hot');
+    $response = $this->httpClient->get('/hot');
 
     expect($response->getStatusCode())
         ->toBe(200)
         ->and($response->getBody()->getContents())
         ->toBe('hot');
 })->after(function () {
-    @unlink(__DIR__ . '/stub/route/hot.php');
+    @unlink(STUB_DIR . '/route/hot.php');
 })->skipOnWindows();

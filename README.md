@@ -41,6 +41,38 @@ Route::get('static/:path', function (string $path) {
 
 2. 访问路由 `http://localhost/static/文件路径`
 
+## 队列支持
+
+使用方法见 [think-queue](https://github.com/top-think/think-queue)
+
+以下配置代替think-queue里的最后一步:`监听任务并执行`,无需另外起进程执行队列
+
+```php
+return [
+    // ...
+    'queue'      => [
+        'enable'  => true,
+        //键名是队列名称
+        'workers' => [
+            //下面参数是不设置时的默认配置
+            'default'            => [
+                'delay'      => 0,
+                'sleep'      => 3,
+                'tries'      => 0,
+                'timeout'    => 60,
+                'worker_num' => 1,
+            ],
+            //使用@符号后面可指定队列使用驱动
+            'default@connection' => [
+                //此处可不设置任何参数，使用上面的默认配置
+            ],
+        ],
+    ],
+    // ...
+];
+
+```
+
 ## 自定义worker
 监听`worker.init`事件 注入`Manager`对象，调用addWorker方法添加
 ~~~php

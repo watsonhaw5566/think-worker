@@ -11,11 +11,18 @@
 
 return [
     'http'       => [
-        'enable'     => true,
+        'enable'     => env('HTTP_ENABLE', true),
         'host'       => '0.0.0.0',
         'port'       => 8080,
         'worker_num' => 2,
         'options'    => [],
+    ],
+    //队列
+    'queue'      => [
+        'enable'  => env('QUEUE_ENABLE', false),
+        'workers' => [
+            'default' => [],
+        ],
     ],
     'hot_update' => [
         'enable'  => env('APP_DEBUG', false),
