@@ -14,7 +14,7 @@ return [
         'enable'     => env('HTTP_ENABLE', true),
         'host'       => '0.0.0.0',
         'port'       => 8080,
-        'worker_num' => 2,
+        'worker_num' => 1,
         'options'    => [],
     ],
     //队列

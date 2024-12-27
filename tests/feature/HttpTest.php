@@ -12,7 +12,7 @@ beforeAll(function () use (&$process) {
 
     while (!$process->getOutput()) {
         $wait++;
-        if ($wait > 10) {
+        if ($wait > 30) {
             throw new Exception('server start failed');
         }
         sleep(1);
@@ -93,6 +93,30 @@ it('file response', function () {
         ->toBe(200)
         ->and($response->getBody()->getContents())
         ->toBe(file_get_contents(STUB_DIR . '/public/asset.txt'));
+});
+
+it('sse', function () {
+    $response = $this->httpClient->get('/sse', [
+        'stream'  => true,
+        'timeout' => 3,
+    ]);
+
+    $body = $response->getBody();
+
+    $buffer = '';
+    while (!$body->eof()) {
+        $text = $body->read(1);
+        if ($text == "\r") {
+            continue;
+        }
+        $buffer .= $text;
+        if ($text == "\n") {
+            if ($buffer != "\n") {
+                expect($buffer)->toStartWith('data: ');
+            }
+            $buffer = '';
+        }
+    }
 });
 
 it('hot update', function () {

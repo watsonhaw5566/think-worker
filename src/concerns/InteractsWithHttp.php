@@ -2,6 +2,7 @@
 
 namespace think\worker\concerns;
 
+use Stringable;
 use think\App;
 use think\Cookie;
 use think\Event;
@@ -9,9 +10,10 @@ use think\exception\Handle;
 use think\helper\Str;
 use think\Http;
 use think\response\View;
-use think\worker\response\File as FileResponse;
 use think\worker\App as WorkerApp;
 use think\worker\Http as WorkerHttp;
+use think\worker\response\File as FileResponse;
+use think\worker\response\Iterator as IteratorResponse;
 use Throwable;
 use Workerman\Connection\TcpConnection;
 use Workerman\Protocols\Http\Chunk;
@@ -105,6 +107,9 @@ trait InteractsWithHttp
 
             $this->sendResponse($connection, $request, $response, $app->cookie);
 
+            //关闭连接
+            $connection->close();
+
             $http->end($response);
         });
     }
@@ -169,11 +174,34 @@ trait InteractsWithHttp
     protected function sendResponse(TcpConnection $connection, \think\Request $request, \think\Response $response, Cookie $cookie)
     {
         switch (true) {
+            case $response instanceof IteratorResponse:
+                $this->sendIterator($connection, $response, $cookie);
+                break;
             case $response instanceof FileResponse:
                 $this->sendFile($connection, $request, $response, $cookie);
                 break;
             default:
                 $this->sendContent($connection, $response, $cookie);
+        }
+    }
+
+    protected function sendIterator(TcpConnection $connection, IteratorResponse $response, Cookie $cookie)
+    {
+        $wkResponse = $this->createResponse($response, $cookie);
+        $connection->send($wkResponse);
+
+        foreach ($response as $content) {
+            $chunk = new class($content) implements Stringable {
+                public function __construct(protected $content)
+                {
+                }
+
+                public function __toString(): string
+                {
+                    return $this->content;
+                }
+            };
+            $connection->send($chunk);
         }
     }
 
@@ -263,12 +291,12 @@ trait InteractsWithHttp
         $connection->send(new Chunk(''));
     }
 
-    protected function createResponse(\think\Response $response, Cookie $cookie)
+    protected function createResponse(\think\Response $response, Cookie $cookie, $body = '')
     {
         $code   = $response->getCode();
         $header = $response->getHeader();
 
-        $wkResponse = new Response($code, $header);
+        $wkResponse = new Response($code, $header, $body);
 
         foreach ($cookie->getCookie() as $name => $val) {
             [$value, $expire, $option] = $val;
