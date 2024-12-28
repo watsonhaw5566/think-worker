@@ -12,7 +12,6 @@
 namespace think\worker\command;
 
 use think\console\Command;
-use think\console\input\Option;
 use think\worker\Manager;
 
 /**

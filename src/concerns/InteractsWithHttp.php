@@ -2,7 +2,6 @@
 
 namespace think\worker\concerns;
 
-use Stringable;
 use think\App;
 use think\Cookie;
 use think\Event;
@@ -14,12 +13,13 @@ use think\worker\App as WorkerApp;
 use think\worker\Http as WorkerHttp;
 use think\worker\response\File as FileResponse;
 use think\worker\response\Iterator as IteratorResponse;
+use think\worker\websocket\Frame;
+use think\worker\Worker;
 use Throwable;
 use Workerman\Connection\TcpConnection;
 use Workerman\Protocols\Http\Chunk;
 use Workerman\Protocols\Http\Request as WorkerRequest;
 use Workerman\Protocols\Http\Response;
-use Workerman\Worker;
 use function substr;
 
 /**
@@ -29,12 +29,21 @@ use function substr;
  */
 trait InteractsWithHttp
 {
-    use ModifyProperty;
+    use ModifyProperty, InteractsWithWebsocket;
+
+    protected $wsEnable = false;
 
     protected function prepareHttp()
     {
         if ($this->getConfig('http.enable', true)) {
-            $workerNum = $this->getConfig('http.worker_num', 2);
+
+            $this->wsEnable = $this->getConfig('websocket.enable', false);
+
+            if ($this->wsEnable) {
+                $this->prepareWebsocket();
+            }
+
+            $workerNum = $this->getConfig('http.worker_num', 4);
             $this->addWorker([$this, 'createHttpServer'], 'http server', $workerNum);
         }
     }
@@ -47,12 +56,26 @@ trait InteractsWithHttp
         $port    = $this->getConfig('http.port');
         $options = $this->getConfig('http.options', []);
 
-        $server = new Worker("http://{$host}:{$port}", $options);
+        $server = new Worker("\\think\\worker\\protocols\\FlexHttp://{$host}:{$port}", $options);
 
         $server->reusePort = true;
 
-        $server->onMessage = function (TcpConnection $connection, WorkerRequest $request) {
-            $this->onRequest($connection, $request);
+        $server->onMessage = function (TcpConnection $connection, $data) {
+            if ($data instanceof WorkerRequest) {
+                if ($this->wsEnable && $this->isWebsocketRequest($data)) {
+                    $this->onHandShake($connection, $data);
+                } else {
+                    $this->onRequest($connection, $data);
+                }
+            } elseif ($data instanceof Frame) {
+                $this->onMessage($connection, $data);
+            }
+        };
+
+        $server->onClose = function (TcpConnection $connection) {
+            if ($this->wsEnable) {
+                $this->onClose($connection);
+            }
         };
 
         $server->listen();
@@ -191,17 +214,7 @@ trait InteractsWithHttp
         $connection->send($wkResponse);
 
         foreach ($response as $content) {
-            $chunk = new class($content) implements Stringable {
-                public function __construct(protected $content)
-                {
-                }
-
-                public function __toString(): string
-                {
-                    return $this->content;
-                }
-            };
-            $connection->send($chunk);
+            $connection->send($content, true);
         }
     }
 

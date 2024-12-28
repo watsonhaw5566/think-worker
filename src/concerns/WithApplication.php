@@ -48,7 +48,7 @@ trait WithApplication
         }
     }
 
-    public function getApplication()
+    public function getApp()
     {
         return $this->app;
     }
@@ -66,10 +66,10 @@ trait WithApplication
      * 在沙箱中执行
      * @param Closure $callable
      */
-    public function runInSandbox(Closure $callable)
+    public function runInSandbox(Closure $callable, ?object $key = null)
     {
         try {
-            $this->getSandbox()->run($callable);
+            $this->getSandbox()->run($callable, $key);
         } catch (Throwable $e) {
             $this->logServerError($e);
         }

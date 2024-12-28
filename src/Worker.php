@@ -4,18 +4,16 @@ namespace think\worker;
 
 class Worker extends \Workerman\Worker
 {
-    public static function runAll()
+    protected static function init(): void
     {
-        static::checkSapiEnv();
-        static::init();
-        static::lock();
-        static::initWorkers();
-        static::installSignal();
-        static::saveMasterPid();
-        static::lock(\LOCK_UN);
-        static::displayUI();
-        static::forkWorkers();
-        static::resetStd();
-        static::monitorWorkers();
+        static::$pidFile    = runtime_path() . 'worker.pid';
+        static::$statusFile = runtime_path() . 'worker.status';
+        static::$logFile    = runtime_path() . 'worker.log';
+        parent::init();
+    }
+
+    protected static function parseCommand(): void
+    {
+
     }
 }

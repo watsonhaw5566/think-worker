@@ -6,7 +6,10 @@ use Symfony\Component\Process\Process;
 
 $process = null;
 beforeAll(function () use (&$process) {
-    $process = new Process(['php', 'think', 'worker'], STUB_DIR);
+    $process = new Process(['php', 'think', 'worker'], STUB_DIR, [
+        'PHP_WEBSOCKET_ENABLE' => 'false',
+        'PHP_QUEUE_ENABLE'     => 'false',
+    ]);
     $process->start();
     $wait = 0;
 

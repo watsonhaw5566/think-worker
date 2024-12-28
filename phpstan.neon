@@ -12,5 +12,5 @@ parameters:
 		- '#Function config_path not found.#'
 		- '#Function public_path not found.#'
 		- '#Function json not found.#'
-		- '#While loop condition is always true#'
+		- '#Function runtime_path not found.#'
 		- '#Constant STUB_DIR not found.#'

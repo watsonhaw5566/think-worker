@@ -23,30 +23,47 @@ trait InteractsWithQueue
 
             $workerNum = Arr::get($options, 'worker_num', 1);
 
-            $this->addWorker(function (\think\worker\Worker $worker) use ($options, $connection, $queue) {
+            $this->addWorker(function () use ($options, $connection, $queue) {
                 $delay   = Arr::get($options, 'delay', 0);
                 $sleep   = Arr::get($options, 'sleep', 3);
                 $tries   = Arr::get($options, 'tries', 0);
                 $timeout = Arr::get($options, 'timeout', 60);
-
                 $qWorker = $this->app->make(Worker::class);
 
-                while (true) {
-                    $timer = Timer::add($timeout, function () use ($worker) {
-                        $worker->stop();
-                    }, [], false);
+                if ($this->supportsAsyncSignals()) {
+                    pcntl_signal(SIGALRM, function () {
+                        \think\worker\Worker::stopAll();
+                    });
 
+                    pcntl_alarm($timeout);
+                }
+
+                $this->createRunTimer(function () use ($connection, $queue, $delay, $sleep, $tries, $qWorker) {
                     $this->runInSandbox(function () use ($connection, $queue, $delay, $sleep, $tries, $qWorker) {
                         $qWorker->runNextJob($connection, $queue, $delay, $sleep, $tries);
                     });
-
-                    Timer::del($timer);
-                }
+                    if ($this->supportsAsyncSignals()) {
+                        pcntl_alarm(0);
+                    }
+                });
             }, "queue [$queue]", $workerNum);
         }
     }
 
-    public function prepareQueue()
+    protected function supportsAsyncSignals()
+    {
+        return extension_loaded('pcntl');
+    }
+
+    protected function createRunTimer($func)
+    {
+        Timer::add(0.1, function () use ($func) {
+            $func();
+            $this->createRunTimer($func);
+        }, [], false);
+    }
+
+    protected function prepareQueue()
     {
         if ($this->getConfig('queue.enable', false)) {
             $this->listenForEvents();

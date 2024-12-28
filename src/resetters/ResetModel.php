@@ -14,7 +14,7 @@ class ResetModel implements ResetterInterface
     {
         if (class_exists(Model::class)) {
             Model::setInvoker(function (...$args) use ($sandbox) {
-                return $sandbox->getApplication()->invoke(...$args);
+                return $sandbox->getSnapshot()->invoke(...$args);
             });
         }
     }

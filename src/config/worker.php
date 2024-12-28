@@ -9,13 +9,21 @@
 // | Author: liu21st <liu21st@gmail.com>
 // +----------------------------------------------------------------------
 
+use think\worker\websocket\Handler;
+
 return [
     'http'       => [
         'enable'     => true,
         'host'       => '0.0.0.0',
         'port'       => 8080,
-        'worker_num' => 2,
+        'worker_num' => 4,
         'options'    => [],
+    ],
+    'websocket'  => [
+        'enable'        => false,
+        'handler'       => Handler::class,
+        'ping_interval' => 25000,
+        'ping_timeout'  => 60000,
     ],
     //队列
     'queue'      => [

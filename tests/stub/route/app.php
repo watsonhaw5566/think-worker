@@ -32,6 +32,16 @@ Route::get('/sse', function () {
     ]);
 });
 
+Route::get('/websocket', function () {
+    return (new \think\worker\response\Websocket())
+        ->onOpen(function (\think\worker\Websocket $websocket) {
+            $websocket->join('foo');
+        })
+        ->onMessage(function (\think\worker\Websocket $websocket, \think\worker\websocket\Frame $frame) {
+            $websocket->to('foo')->push($frame->data);
+        });
+});
+
 Route::get('test', 'index/test');
 Route::post('json', 'index/json');
 

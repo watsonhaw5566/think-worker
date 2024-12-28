@@ -73,6 +73,54 @@ return [
 
 ```
 
+### websocket
+
+> 使用路由调度的方式，可以让不同路径的websocket服务响应不同的事件
+
+#### 配置
+
+```
+swoole.websocket = true 时开启
+```
+
+#### 路由定义
+```php
+Route::get('path1','controller/action1');
+Route::get('path2','controller/action2');
+```
+
+#### 控制器
+
+```php
+use \think\swoole\Websocket;
+use \think\swoole\websocket\Event;
+use \Swoole\WebSocket\Frame;
+
+class Controller {
+
+    public function action1(){
+    
+        return \think\swoole\helper\websocket()
+            ->onOpen(...)
+            ->onMessage(function(Websocket $websocket, Frame $frame){ 
+                ...
+            })
+            ->onClose(...);
+    }
+    
+    public function action2(){
+    
+        return \think\swoole\helper\websocket()
+            ->onOpen(...)
+            ->onMessage(function(Websocket $websocket, Frame $frame){
+               ...
+            })
+            ->onClose(...);
+    }
+}
+```
+
+
 ## 自定义worker
 监听`worker.init`事件 注入`Manager`对象，调用addWorker方法添加
 ~~~php
