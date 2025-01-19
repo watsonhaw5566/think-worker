@@ -13,7 +13,8 @@
         "workerman/workerman": "^5.0",
         "topthink/framework": "^8.0",
         "revolt/event-loop": "^1.0",
-        "workerman/redis": "^2.0"
+        "workerman/redis": "^2.0",
+        "symfony/finder": ">=4.3"
     },
     "autoload": {
         "psr-4": {
