@@ -80,7 +80,7 @@ return [
 #### 配置
 
 ```
-swoole.websocket = true 时开启
+worker.websocket = true 时开启
 ```
 
 #### 路由定义
@@ -92,15 +92,14 @@ Route::get('path2','controller/action2');
 #### 控制器
 
 ```php
-use \think\swoole\Websocket;
-use \think\swoole\websocket\Event;
-use \Swoole\WebSocket\Frame;
+use \think\worker\Websocket;
+use \think\worker\websocket\Frame;
 
 class Controller {
 
     public function action1(){
     
-        return \think\swoole\helper\websocket()
+        return (new \think\worker\response\Websocket())
             ->onOpen(...)
             ->onMessage(function(Websocket $websocket, Frame $frame){ 
                 ...
@@ -110,7 +109,7 @@ class Controller {
     
     public function action2(){
     
-        return \think\swoole\helper\websocket()
+        return (new \think\worker\response\Websocket())
             ->onOpen(...)
             ->onMessage(function(Websocket $websocket, Frame $frame){
                ...
