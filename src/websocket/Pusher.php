@@ -55,8 +55,10 @@ class Pusher
         }
 
         foreach (array_unique($fds) as $fd) {
-            [$workerId, $fd] = explode('.', $fd);
-            $this->manager->sendMessage((int) $workerId, new PushMessage((int) $fd, $data));
+            if (sscanf($fd, '%d.%d', $workerId, $fdNum) !== 2) {
+                continue;
+            }
+            $this->manager->sendMessage($workerId, new PushMessage($fdNum, $data));
         }
     }
 

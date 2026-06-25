@@ -34,7 +34,7 @@ class QueueTest extends TestCase
             if ($wait > 30) {
                 throw new \RuntimeException('worker server failed to start: ' . self::$process->getErrorOutput());
             }
-            usleep(200_000);
+            usleep(100_000);
         }
     }
 

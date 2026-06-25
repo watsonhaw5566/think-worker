@@ -26,7 +26,7 @@ class HttpTest extends TestCase
             if ($wait > 30) {
                 throw new \Exception('server start failed');
             }
-            sleep(1);
+            usleep(100_000);
         }
     }
 

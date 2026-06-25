@@ -18,59 +18,75 @@ class Server
         if (empty($buffer)) {
             return;
         }
-        /** @var Command $command */
-        $command = unserialize($buffer);
 
-        $result = Result::create($command->id);
+        $command = json_decode($buffer, true);
+        if (!is_array($command) || !isset($command['type']) || $command['type'] !== 'command' || !isset($command['name']) || !isset($command['key'])) {
+            return;
+        }
 
-        switch ($command->name) {
+        $hasResult = isset($command['id']);
+        $resultData = ['type' => 'result', 'id' => $command['id'], 'data' => null];
+
+        switch ($command['name']) {
             case 'get':
-                $result->data = $this->data[$command->key] ?? null;
+                $resultData['data'] = $this->data[$command['key']] ?? null;
                 break;
             case 'set':
-                $this->data[$command->key] = $command->data;
+                $this->data[$command['key']] = $command['data'];
                 break;
             case 'inc':
-                if (!isset($this->data[$command->key]) || !is_integer($this->data[$command->key])) {
-                    $this->data[$command->key] = 0;
+                if (!isset($this->data[$command['key']]) || !is_integer($this->data[$command['key']])) {
+                    $this->data[$command['key']] = 0;
                 }
-                $result->data = $this->data[$command->key] += $command->data ?? 1;
+                $resultData['data'] = $this->data[$command['key']] += $command['data'] ?? 1;
                 break;
             case 'sAdd':
-                if (!isset($this->data[$command->key]) || !is_array($this->data[$command->key])) {
-                    $this->data[$command->key] = [];
+                if (!isset($this->data[$command['key']]) || !is_array($this->data[$command['key']])) {
+                    $this->data[$command['key']] = [];
                 }
-                $this->data[$command->key] = array_merge($this->data[$command->key], $command->data);
+                $addValues = is_array($command['data']) ? $command['data'] : [];
+                $this->data[$command['key']] = array_values(array_unique(array_merge($this->data[$command['key']], $addValues)));
                 break;
             case 'sRem':
-                if (!isset($this->data[$command->key]) || !is_array($this->data[$command->key])) {
-                    $this->data[$command->key] = [];
+                if (!isset($this->data[$command['key']]) || !is_array($this->data[$command['key']])) {
+                    $this->data[$command['key']] = [];
                 }
-                $this->data[$command->key] = array_diff($this->data[$command->key], [$command->data]);
+                $removeValues = is_array($command['data']) ? $command['data'] : [$command['data']];
+                $this->data[$command['key']] = array_values(array_diff($this->data[$command['key']], $removeValues));
                 break;
             case 'sMembers':
-                if (!isset($this->data[$command->key]) || !is_array($this->data[$command->key])) {
-                    $this->data[$command->key] = [];
+                if (!isset($this->data[$command['key']]) || !is_array($this->data[$command['key']])) {
+                    $this->data[$command['key']] = [];
                 }
-                $result->data = $this->data[$command->key];
+                $resultData['data'] = $this->data[$command['key']];
                 break;
             case 'subscribe':
-                if (!isset($this->subscribers[$command->key])) {
-                    $this->subscribers[$command->key] = [];
+                if (!isset($this->subscribers[$command['key']])) {
+                    $this->subscribers[$command['key']] = [];
                 }
-                $this->subscribers[$command->key][] = $connection;
+                $this->subscribers[$command['key']][] = $connection;
                 break;
             case 'publish':
-                if (!empty($this->subscribers[$command->key])) {
-                    foreach ($this->subscribers[$command->key] as $conn) {
-                        $conn->send(serialize(Event::create($command->key, $command->data)));
+                if (!empty($this->subscribers[$command['key']])) {
+                    $eventData = @json_encode([
+                        'type' => 'event',
+                        'name' => $command['key'],
+                        'data' => $command['data'],
+                    ]);
+                    if ($eventData !== false) {
+                        foreach ($this->subscribers[$command['key']] as $conn) {
+                            $conn->send($eventData);
+                        }
                     }
                 }
                 break;
         }
 
-        if (isset($result->id)) {
-            $connection->send(serialize($result));
+        if ($hasResult) {
+            $response = @json_encode($resultData);
+            if ($response !== false) {
+                $connection->send($response);
+            }
         }
     }
 

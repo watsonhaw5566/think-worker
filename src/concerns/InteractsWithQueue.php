@@ -30,20 +30,21 @@ trait InteractsWithQueue
                 $timeout = Arr::get($options, 'timeout', 60);
                 $qWorker = $this->app->make(Worker::class);
 
-                if ($this->supportsAsyncSignals()) {
-                    pcntl_signal(SIGALRM, function () {
-                        \think\worker\Worker::stopAll();
-                    });
+                $this->createRunTimer(function () use ($connection, $queue, $delay, $sleep, $tries, $timeout, $qWorker) {
+                    if ($this->supportsAsyncSignals()) {
+                        pcntl_signal(SIGALRM, function () {
+                            \think\worker\Worker::stopAll();
+                        });
+                        pcntl_alarm($timeout);
+                    }
 
-                    pcntl_alarm($timeout);
-                }
-
-                $this->createRunTimer(function () use ($connection, $queue, $delay, $sleep, $tries, $qWorker) {
                     $this->runInSandbox(function () use ($connection, $queue, $delay, $sleep, $tries, $qWorker) {
                         $qWorker->runNextJob($connection, $queue, $delay, $sleep, $tries);
                     });
+
                     if ($this->supportsAsyncSignals()) {
                         pcntl_alarm(0);
+                        pcntl_signal(SIGALRM, SIG_DFL);
                     }
                 });
             }, "queue [$queue]", $workerNum);

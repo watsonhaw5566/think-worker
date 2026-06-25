@@ -279,29 +279,30 @@ trait InteractsWithHttp
 
     protected function sendContent(TcpConnection $connection, \think\Response $response, Cookie $cookie)
     {
-        $response->header(['Transfer-Encoding' => 'chunked']);
-
-        $wkResponse = $this->createResponse($response, $cookie);
-
-        $connection->send($wkResponse);
-
         $content = $response->getContent();
-        if ($content) {
-            $contentSize = strlen($content);
-            $chunkSize   = 8192;
+        $contentSize = strlen($content);
+        $chunkSize   = 8192;
 
-            if ($contentSize > $chunkSize) {
+        $useChunked = $contentSize > $chunkSize;
+
+        if ($useChunked) {
+            $response->header(['Transfer-Encoding' => 'chunked']);
+            $wkResponse = $this->createResponse($response, $cookie);
+            $connection->send($wkResponse);
+
+            if ($content) {
                 $sendSize = 0;
                 do {
                     if (!$connection->send(new Chunk(substr($content, $sendSize, $chunkSize)))) {
                         break;
                     }
                 } while (($sendSize += $chunkSize) < $contentSize);
-            } else {
-                $connection->send(new Chunk($content));
             }
+            $connection->send(new Chunk(''));
+        } else {
+            $wkResponse = $this->createResponse($response, $cookie, $content);
+            $connection->send($wkResponse);
         }
-        $connection->send(new Chunk(''));
     }
 
     protected function createResponse(\think\Response $response, Cookie $cookie, $body = '')
