@@ -14,7 +14,7 @@ use think\worker\command\Server;
 
 class Service extends \think\Service
 {
-    public function boot()
+    public function boot(): void
     {
         $this->commands([
             Server::class,

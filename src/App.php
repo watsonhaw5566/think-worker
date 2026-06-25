@@ -4,9 +4,9 @@ namespace think\worker;
 
 class App extends \think\App
 {
-    protected $inConsole = true;
+    protected bool $inConsole = true;
 
-    public function setInConsole($inConsole = true)
+    public function setInConsole(bool $inConsole = true): void
     {
         $this->inConsole = $inConsole;
     }
@@ -16,7 +16,7 @@ class App extends \think\App
         return $this->inConsole;
     }
 
-    public function clearInstances()
+    public function clearInstances(): void
     {
         $this->instances = [];
     }

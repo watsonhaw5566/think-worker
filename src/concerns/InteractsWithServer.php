@@ -14,13 +14,12 @@ use Workerman\Redis\Client;
  */
 trait InteractsWithServer
 {
-    /** @var Ipc */
-    protected $ipc;
+    protected Ipc $ipc;
 
-    protected $workerId = null;
-    protected $stopping = false;
+    protected mixed $workerId = null;
+    protected bool $stopping = false;
 
-    public function addWorker(callable $func, $name = 'none', int $count = 1): Worker
+    public function addWorker(callable $func, string $name = 'none', int $count = 1): Worker
     {
         $worker = new Worker();
 
@@ -47,12 +46,12 @@ trait InteractsWithServer
         return $worker;
     }
 
-    public function getWorkerId()
+    public function getWorkerId(): mixed
     {
         return $this->workerId;
     }
 
-    public function isStopping()
+    public function isStopping(): bool
     {
         return $this->stopping;
     }
@@ -74,12 +73,12 @@ trait InteractsWithServer
         Worker::runAll();
     }
 
-    protected function prepareIpc()
+    protected function prepareIpc(): void
     {
         $this->ipc = $this->container->make(Ipc::class);
     }
 
-    public function sendMessage($workerId, $message)
+    public function sendMessage(mixed $workerId, mixed $message): void
     {
         $this->ipc->sendMessage($workerId, $message);
     }
@@ -87,7 +86,7 @@ trait InteractsWithServer
     /**
      * 热更新
      */
-    protected function addHotUpdateWorker()
+    protected function addHotUpdateWorker(): void
     {
         $worker = new Worker();
 
@@ -105,7 +104,7 @@ trait InteractsWithServer
     /**
      * 清除apc、op缓存
      */
-    protected function clearCache()
+    protected function clearCache(): void
     {
         if (extension_loaded('apc')) {
             apc_clear_cache();

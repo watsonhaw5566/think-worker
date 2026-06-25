@@ -10,7 +10,7 @@ class Watcher extends \think\Manager
 {
     protected $namespace = '\\think\\worker\\watcher\\';
 
-    protected function getConfig(string $name, $default = null)
+    protected function getConfig(string $name, mixed $default = null): mixed
     {
         return $this->app->config->get('worker.hot_update.' . $name, $default);
     }
@@ -26,7 +26,7 @@ class Watcher extends \think\Manager
         ];
     }
 
-    public function getDefaultDriver()
+    public function getDefaultDriver(): string
     {
         return $this->getConfig('type', 'scan');
     }
