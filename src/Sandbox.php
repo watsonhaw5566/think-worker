@@ -26,24 +26,19 @@ class Sandbox
 {
     use ModifyProperty;
 
-    /** @var App|null */
-    protected $snapshot;
+    protected ?App $snapshot = null;
 
-    /** @var WeakMap */
-    protected $snapshots;
+    protected WeakMap $snapshots;
 
-    /** @var App */
-    protected $app;
+    protected App $app;
 
-    /** @var Config */
-    protected $config;
+    protected Config $config;
 
-    /** @var Event */
-    protected $event;
+    protected Event $event;
 
     /** @var ResetterInterface[] */
-    protected $resetters = [];
-    protected $services  = [];
+    protected array $resetters = [];
+    protected array $services  = [];
 
     public function __construct(App $app)
     {
@@ -52,7 +47,7 @@ class Sandbox
         $this->initialize();
     }
 
-    protected function initialize()
+    protected function initialize(): void
     {
         Container::setInstance(function () {
             return $this->getSnapshot();
@@ -64,7 +59,7 @@ class Sandbox
         $this->setInitialResetters();
     }
 
-    public function run(Closure $callable, ?object $key = null)
+    public function run(Closure $callable, ?object $key = null): void
     {
         $this->snapshot = $this->createApp($key);
         try {
@@ -80,7 +75,7 @@ class Sandbox
         }
     }
 
-    protected function createApp(?object $key = null)
+    protected function createApp(?object $key = null): App
     {
         if (!empty($key)) {
             if (isset($this->snapshots[$key])) {
@@ -108,14 +103,14 @@ class Sandbox
         return $app;
     }
 
-    protected function resetApp(App $app)
+    protected function resetApp(App $app): void
     {
         foreach ($this->resetters as $resetter) {
             $resetter->handle($app, $this);
         }
     }
 
-    protected function setInstance(App $app)
+    protected function setInstance(App $app): void
     {
         $app->instance('app', $app);
         $app->instance(Container::class, $app);
@@ -132,17 +127,17 @@ class Sandbox
     /**
      * Set initial config.
      */
-    protected function setInitialConfig()
+    protected function setInitialConfig(): void
     {
         $this->config = clone $this->app->config;
     }
 
-    protected function setInitialEvent()
+    protected function setInitialEvent(): void
     {
         $this->event = clone $this->app->event;
     }
 
-    protected function setInitialServices()
+    protected function setInitialServices(): void
     {
         $services = $this->config->get('worker.services', []);
 
@@ -157,7 +152,7 @@ class Sandbox
     /**
      * Initialize resetters.
      */
-    protected function setInitialResetters()
+    protected function setInitialResetters(): void
     {
         $resetters = [
             ClearInstances::class,
@@ -179,7 +174,7 @@ class Sandbox
         }
     }
 
-    public function getSnapshot()
+    public function getSnapshot(): App
     {
         $snapshot = $this->snapshot;
         if ($snapshot instanceof App) {
@@ -192,17 +187,17 @@ class Sandbox
     /**
      * Get config snapshot.
      */
-    public function getConfig()
+    public function getConfig(): Config
     {
         return $this->config;
     }
 
-    public function getEvent()
+    public function getEvent(): Event
     {
         return $this->event;
     }
 
-    public function getServices()
+    public function getServices(): array
     {
         return $this->services;
     }

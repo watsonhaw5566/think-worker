@@ -4,9 +4,9 @@ namespace think\worker;
 
 class Ipc
 {
-    protected $workerId;
+    protected mixed $workerId;
 
-    protected $allowedClasses = [
+    protected array $allowedClasses = [
         message\PushMessage::class,
     ];
 
@@ -15,13 +15,13 @@ class Ipc
 
     }
 
-    public function listenMessage()
+    public function listenMessage(): mixed
     {
         $this->subscribe();
         return $this->workerId;
     }
 
-    public function sendMessage($workerId, $message)
+    public function sendMessage(mixed $workerId, mixed $message): void
     {
         if ($workerId === $this->workerId) {
             $this->manager->triggerEvent('message', $message);
@@ -30,7 +30,7 @@ class Ipc
         }
     }
 
-    public function subscribe()
+    public function subscribe(): void
     {
         $this->workerId = $this->conduit->inc('ipc:worker');
         $this->conduit->subscribe("ipc:message:{$this->workerId}", function ($message) {
@@ -41,7 +41,7 @@ class Ipc
         });
     }
 
-    public function publish($workerId, $message)
+    public function publish(mixed $workerId, mixed $message): void
     {
         $encoded = $this->encodeMessage($message);
         if ($encoded !== null) {
@@ -49,7 +49,7 @@ class Ipc
         }
     }
 
-    protected function encodeMessage($message)
+    protected function encodeMessage(mixed $message): ?string
     {
         if (is_object($message)) {
             $class = get_class($message);
@@ -71,9 +71,9 @@ class Ipc
         return $json !== false ? $json : null;
     }
 
-    protected function decodeMessage($encoded)
+    protected function decodeMessage(mixed $encoded): mixed
     {
-        $payload = json_decode($encoded, true);
+        $payload = json_decode((string) $encoded, true);
         if (!is_array($payload) || !array_key_exists('_d', $payload)) {
             return null;
         }
