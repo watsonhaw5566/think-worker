@@ -313,7 +313,16 @@ trait InteractsWithHttp
 
         foreach ($cookie->getCookie() as $name => $val) {
             [$value, $expire, $option] = $val;
-            $wkResponse->cookie($name, $value, $expire, $option['path'], $option['domain'], (bool) $option['secure'], (bool) $option['httponly'], $option['samesite']);
+            // ThinkPHP 的 $expire 是绝对时间戳，Workerman 的 $maxAge 是相对秒数
+            // $expire = 0 表示 session cookie → 传 null 不设置 Max-Age
+            // $expire > 0 表示未来时间点 → 转换为相对秒数
+            // $expire < 0 表示删除 cookie → 传 0 让 Max-Age=0 立即过期
+            $maxAge = match (true) {
+                $expire > 0 => $expire - time(),
+                $expire < 0 => 0,
+                default     => null,
+            };
+            $wkResponse->cookie($name, $value, $maxAge, $option['path'], $option['domain'], (bool) $option['secure'], (bool) $option['httponly'], $option['samesite']);
         }
 
         return $wkResponse;

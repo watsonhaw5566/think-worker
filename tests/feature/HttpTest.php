@@ -1,153 +1,160 @@
 <?php
 
+namespace think\worker\tests\feature;
+
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
-$process = null;
-beforeAll(function () use (&$process) {
-    $process = new Process(['php', 'think', 'worker'], STUB_DIR, [
-        'PHP_WEBSOCKET_ENABLE' => 'false',
-        'PHP_QUEUE_ENABLE'     => 'false',
-    ]);
-    $process->start();
-    $wait = 0;
+class HttpTest extends TestCase
+{
+    private static ?Process $process = null;
+    private ?Client $httpClient = null;
 
-    while (!$process->getOutput()) {
-        $wait++;
-        if ($wait > 30) {
-            throw new Exception('server start failed');
-        }
-        sleep(1);
-    }
-});
+    public static function setUpBeforeClass(): void
+    {
+        self::$process = new Process(['php', 'think', 'worker'], STUB_DIR, [
+            'PHP_WEBSOCKET_ENABLE' => 'false',
+            'PHP_QUEUE_ENABLE'     => 'false',
+        ]);
+        self::$process->start();
+        $wait = 0;
 
-afterAll(function () use (&$process) {
-    echo $process->getOutput();
-    $process->stop();
-});
-
-beforeEach(function () {
-    $this->httpClient = new Client([
-        'base_uri'    => 'http://127.0.0.1:8080',
-        'cookies'     => true,
-        'http_errors' => false,
-        'timeout'     => 1,
-    ]);
-});
-
-it('callback route', function () {
-    $response = $this->httpClient->get('/');
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe('hello world');
-});
-
-it('controller route', function () {
-    $jar = new CookieJar();
-
-    $response = $this->httpClient->get('/test', ['cookies' => $jar]);
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe('test')
-        ->and($jar->getCookieByName('name')->getValue())
-        ->toBe('think');
-});
-
-it('json post', function () {
-
-    $data     = [
-        'name' => 'think',
-    ];
-    $response = $this->httpClient->post('/json', [
-        'json' => $data,
-    ]);
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe(json_encode($data));
-});
-
-it('put and delete request', function () {
-    $response = $this->httpClient->put('/');
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe('put');
-
-    $response = $this->httpClient->delete('/');
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe('delete');
-});
-
-it('file response', function () {
-    $response = $this->httpClient->get('/static/asset.txt');
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe(file_get_contents(STUB_DIR . '/public/asset.txt'));
-});
-
-it('sse', function () {
-    $response = $this->httpClient->get('/sse', [
-        'stream'  => true,
-        'timeout' => 3,
-    ]);
-
-    $body = $response->getBody();
-
-    $buffer = '';
-    while (!$body->eof()) {
-        $text = $body->read(1);
-        if ($text == "\r") {
-            continue;
-        }
-        $buffer .= $text;
-        if ($text == "\n") {
-            if ($buffer != "\n") {
-                expect($buffer)->toStartWith('data: ');
+        while (!self::$process->getOutput()) {
+            $wait++;
+            if ($wait > 30) {
+                throw new \Exception('server start failed');
             }
-            $buffer = '';
+            sleep(1);
         }
     }
-});
 
-it('hot update', function () {
-    $response = $this->httpClient->get('/hot');
+    public static function tearDownAfterClass(): void
+    {
+        echo self::$process->getOutput();
+        self::$process->stop();
+    }
 
-    expect($response->getStatusCode())
-        ->toBe(404);
+    protected function setUp(): void
+    {
+        $this->httpClient = new Client([
+            'base_uri'    => 'http://127.0.0.1:8080',
+            'cookies'     => true,
+            'http_errors' => false,
+            'timeout'     => 1,
+        ]);
+    }
 
-    $route = <<<PHP
+    public function test_callback_route(): void
+    {
+        $response = $this->httpClient->get('/');
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('hello world', $response->getBody()->getContents());
+    }
+
+    public function test_controller_route(): void
+    {
+        $jar = new CookieJar();
+
+        $response = $this->httpClient->get('/test', ['cookies' => $jar]);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('test', $response->getBody()->getContents());
+        $this->assertSame('think', $jar->getCookieByName('name')->getValue());
+    }
+
+    public function test_json_post(): void
+    {
+        $data     = [
+            'name' => 'think',
+        ];
+        $response = $this->httpClient->post('/json', [
+            'json' => $data,
+        ]);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(json_encode($data), $response->getBody()->getContents());
+    }
+
+    public function test_put_and_delete_request(): void
+    {
+        $response = $this->httpClient->put('/');
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('put', $response->getBody()->getContents());
+
+        $response = $this->httpClient->delete('/');
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('delete', $response->getBody()->getContents());
+    }
+
+    public function test_file_response(): void
+    {
+        $response = $this->httpClient->get('/static/asset.txt');
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(file_get_contents(STUB_DIR . '/public/asset.txt'), $response->getBody()->getContents());
+    }
+
+    public function test_sse(): void
+    {
+        $response = $this->httpClient->get('/sse', [
+            'stream'  => true,
+            'timeout' => 3,
+        ]);
+
+        $body = $response->getBody();
+
+        $buffer = '';
+        while (!$body->eof()) {
+            $text = $body->read(1);
+            if ($text == "\r") {
+                continue;
+            }
+            $buffer .= $text;
+            if ($text == "\n") {
+                if ($buffer != "\n") {
+                    $this->assertStringStartsWith('data: ', $buffer);
+                }
+                $buffer = '';
+            }
+        }
+    }
+
+    public function test_hot_update(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Skip on Windows');
+        }
+
+        $response = $this->httpClient->get('/hot');
+
+        $this->assertSame(404, $response->getStatusCode());
+
+        $route = <<<'PHP'
 <?php
 
-use think\\facade\\Route;
+use think\facade\Route;
 
 Route::get('/hot', function () {
     return 'hot';
 });
 PHP;
 
-    file_put_contents(STUB_DIR . '/route/hot.php', $route);
+        file_put_contents(STUB_DIR . '/route/hot.php', $route);
 
-    sleep(2);
+        sleep(2);
 
-    $response = $this->httpClient->get('/hot');
+        try {
+            $response = $this->httpClient->get('/hot');
 
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->getBody()->getContents())
-        ->toBe('hot');
-})->after(function () {
-    @unlink(STUB_DIR . '/route/hot.php');
-})->skipOnWindows();
+            $this->assertSame(200, $response->getStatusCode());
+            $this->assertSame('hot', $response->getBody()->getContents());
+        } finally {
+            @unlink(STUB_DIR . '/route/hot.php');
+        }
+    }
+}
