@@ -36,8 +36,8 @@ return [
     'websocket'  => [
         'enable'        => false,
         'handler'       => \think\worker\websocket\Handler::class,
-        'ping_interval' => 25000,
-        'ping_timeout'  => 60000,
+        'ping_interval' => 25,
+        'ping_timeout'  => 60,
     ],
     'queue'      => [
         'enable'  => false,
@@ -121,7 +121,21 @@ return [
 
 在 `config/worker.php` 中设置 `websocket.enable = true` 开启，并可指定 `handler` 类。
 
+```php
+'websocket' => [
+    'enable'        => true,
+    'handler'       => \think\worker\websocket\Handler::class,
+    'ping_interval' => 25,  // 秒，0=禁用
+    'ping_timeout'  => 60,  // 秒，0=禁用
+],
+```
+
+- **`ping_interval`**（秒，默认 25）：服务端每隔 25 秒向客户端发送一次 ping 帧
+- **`ping_timeout`**（秒，默认 60）：若 60 秒内未收到任何消息则关闭连接
+
 内置 Handler 位于 `think\worker\websocket\Handler`，支持房间（Room）、事件（Event）、推送（Pusher）及 socket.io 协议。
+
+> **socket.io 协议**：若使用 `\think\worker\websocket\socketio\Handler`，同样读取同一配置，下发给客户端时自动转毫秒（socket.io 协议要求毫秒）。
 
 ### 路由定义
 ```php
