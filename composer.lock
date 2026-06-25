@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e192a6d272b562d0d8ae081d05ec8f7a",
+    "content-hash": "d3a7120a55d13c23a2530c0ccf65e7df",
     "packages": [
         {
             "name": "revolt/event-loop",

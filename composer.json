@@ -13,7 +13,7 @@
     "workerman/workerman": "~5.0.0",
     "revolt/event-loop": "^1.0",
     "workerman/redis": "^2.0",
-    "symfony/finder": ">=4.3"
+    "symfony/finder": "^7.0"
   },
   "autoload": {
     "psr-4": {
