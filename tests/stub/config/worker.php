@@ -22,8 +22,8 @@ return [
     'websocket'  => [
         'enable'        => env('WEBSOCKET_ENABLE', true),
         'handler'       => Handler::class,
-        'ping_interval' => 25000,
-        'ping_timeout'  => 60000,
+        'ping_interval' => 25,
+        'ping_timeout'  => 60,
     ],
     //队列
     'queue'      => [

@@ -35,8 +35,8 @@ class Handler implements HandlerInterface
         $this->event        = $event;
         $this->config       = $config;
         $this->websocket    = $websocket;
-        $this->pingInterval = $this->config->get('worker.websocket.ping_interval', 25000);
-        $this->pingTimeout  = $this->config->get('worker.websocket.ping_timeout', 60000);
+        $this->pingInterval = $this->config->get('worker.websocket.ping_interval', 25);
+        $this->pingTimeout  = $this->config->get('worker.websocket.ping_timeout', 60);
     }
 
     /**
@@ -52,8 +52,8 @@ class Handler implements HandlerInterface
             [
                 'sid'          => base64_encode(uniqid()),
                 'upgrades'     => [],
-                'pingInterval' => $this->pingInterval,
-                'pingTimeout'  => $this->pingTimeout,
+                'pingInterval' => $this->pingInterval * 1000,
+                'pingTimeout'  => $this->pingTimeout * 1000,
             ]
         );
 
