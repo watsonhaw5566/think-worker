@@ -10,7 +10,7 @@
 // +----------------------------------------------------------------------
 
 return [
-    'default'     => 'redis',
+    'default'     => env('QUEUE_CONNECTION', 'sync'),
     'connections' => [
         'sync'     => [
             'type' => 'sync',
