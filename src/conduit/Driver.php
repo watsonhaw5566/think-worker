@@ -16,7 +16,7 @@ abstract class Driver
 
     abstract public function sAdd(string $name, ...$value);
 
-    abstract public function sRem(string $name, $value);
+    abstract public function sRem(string $name, ...$value);
 
     abstract public function sMembers(string $name);
 

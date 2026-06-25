@@ -110,8 +110,12 @@ trait InteractsWithWebsocket
     protected function isWebsocketRequest(WorkerRequest $request)
     {
         $header = $request->header();
-        return strcasecmp(Arr::get($header, 'connection', ''), 'upgrade') === 0 &&
-            strcasecmp(Arr::get($header, 'upgrade', ''), 'websocket') === 0;
+        $connection = strtolower(Arr::get($header, 'connection', ''));
+        $connectionTokens = array_filter(array_map('trim', explode(',', $connection)));
+        return in_array('upgrade', $connectionTokens, true) &&
+            strcasecmp(Arr::get($header, 'upgrade', ''), 'websocket') === 0 &&
+            !empty(Arr::get($header, 'sec-websocket-key', '')) &&
+            Arr::get($header, 'sec-websocket-version', '') === '13';
     }
 
     protected function upgrade(TcpConnection $connection, WorkerRequest $request)

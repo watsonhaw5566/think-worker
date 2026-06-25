@@ -85,7 +85,7 @@ class Socket extends Driver
         $this->send(Command::create('sAdd', $name, $value));
     }
 
-    public function sRem(string $name, $value)
+    public function sRem(string $name, ...$value)
     {
         $this->send(Command::create('sRem', $name, $value));
     }
@@ -127,7 +127,19 @@ class Socket extends Driver
             throw new Exception('conduit connection is disconnected');
         }
 
-        $this->connection->send(serialize($command));
+        $json = @json_encode([
+            'type' => 'command',
+            'id'   => $command->id,
+            'name' => $command->name,
+            'key'  => $command->key,
+            'data' => $command->data,
+        ]);
+
+        if ($json === false) {
+            throw new Exception('conduit message encoding failed: ' . json_last_error_msg());
+        }
+
+        $this->connection->send($json);
     }
 
     protected function createConnection(?Suspension $suspension = null)
@@ -148,17 +160,19 @@ class Socket extends Driver
         };
 
         $connection->onMessage = function ($connection, $buffer) {
-            /** @var Result|Event $result */
-            $result = unserialize($buffer);
+            $decoded = json_decode($buffer, true);
+            if (!is_array($decoded) || !isset($decoded['type'])) {
+                return;
+            }
 
-            if ($result instanceof Event) {
-                if (isset($this->events[$result->name])) {
-                    $this->events[$result->name]($result->data);
+            if ($decoded['type'] === 'event' && isset($decoded['name']) && isset($decoded['data'])) {
+                if (isset($this->events[$decoded['name']])) {
+                    $this->events[$decoded['name']]($decoded['data']);
                 }
-            } elseif (isset($result->id) && isset($this->suspensions[$result->id])) {
-                [$suspension] = $this->suspensions[$result->id];
-                $suspension->resume($result->data);
-                unset($this->suspensions[$result->id]);
+            } elseif ($decoded['type'] === 'result' && isset($decoded['id']) && isset($this->suspensions[$decoded['id']])) {
+                [$suspension] = $this->suspensions[$decoded['id']];
+                $suspension->resume($decoded['data'] ?? null);
+                unset($this->suspensions[$decoded['id']]);
             }
         };
 
