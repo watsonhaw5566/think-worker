@@ -1,15 +1,56 @@
 ThinkPHP Workerman 扩展
 ===============
 
-交流群：981069000 [![点击加群](https://pub.idqqimg.com/wpa/images/group.png "点击加群")](https://qm.qq.com/q/A8YNpzrzC8)
-
-## 安装
-```
-composer require topthink/think-worker
-```
+基于 [Workerman 5.x](https://www.workerman.net/doc/workerman/) 为 ThinkPHP 8 提供高性能服务支持。
 
 ## 说明
-> 由于windows下无法在一个文件里启动多个worker，所以本扩展不支持windows平台
+> 由于 Windows 下无法在一个文件里启动多个 Worker，本扩展不支持 Windows 平台。建议使用 Linux / macOS 环境，生产环境推荐使用 supervisor 管理进程。
+
+## 环境要求
+- PHP >= 8.2
+- ThinkPHP ^8.0
+- Workerman ~5.0.0
+
+## 核心特性
+- **Http 服务**：直接运行 ThinkPHP 应用，替代传统 FPM 部署
+- **Websocket 服务**：支持原生 Handler 与 socket.io 协议，附带房间/推送/事件系统
+- **队列服务**：与 think-queue 无缝对接，无需单独起进程
+- **Conduit 通道**：支持自定义 Socket 协议与命令/事件分发
+- **热更新 Watcher**：开发模式下自动检测文件变更并重载
+- **Sandbox 沙盒**：每次请求重置容器、配置、事件、模型等状态
+- **进程间通信 IPC**：多 Worker 之间消息推送
+- **自定义 Worker**：通过 `worker.init` 事件动态注册 Worker
+
+## 配置
+安装后配置文件位于 `config/worker.php`：
+
+```php
+return [
+    'http'       => [
+        'enable'     => true,
+        'host'       => '0.0.0.0',
+        'port'       => 8080,
+        'worker_num' => 4,
+        'options'    => [],
+    ],
+    'websocket'  => [
+        'enable'        => false,
+        'handler'       => \think\worker\websocket\Handler::class,
+        'ping_interval' => 25000,
+        'ping_timeout'  => 60000,
+    ],
+    'queue'      => [
+        'enable'  => false,
+        'workers' => [],
+    ],
+    'hot_update' => [
+        'enable'  => env('APP_DEBUG', false),
+        'name'    => ['*.php'],
+        'include' => [app_path(), config_path(), root_path('route')],
+        'exclude' => [],
+    ],
+];
+```
 
 ## 使用方法
 
@@ -20,17 +61,16 @@ composer require topthink/think-worker
 php think worker
 ~~~
 
-然后就可以通过浏览器直接访问当前应用
+然后通过浏览器访问当前应用
 
 ~~~
 http://localhost:8080
 ~~~
 
-如果需要使用守护进程方式运行，建议使用supervisor来管理进程
+生产环境建议使用 supervisor 管理进程
 
 ## 访问静态文件
-> 建议使用nginx来支持静态文件访问，也可使用路由输出文件内容，下面是示例，可参照修改
-1. 添加静态文件路由：
+> 建议使用 nginx 反向代理来提供静态文件访问；也可使用路由输出文件内容，示例如下：
 
 ```php
 Route::get('static/:path', function (string $path) {
@@ -39,7 +79,7 @@ Route::get('static/:path', function (string $path) {
 })->pattern(['path' => '.*\.\w+$']);
 ```
 
-2. 访问路由 `http://localhost/static/文件路径`
+访问路由：`http://localhost/static/文件路径`
 
 ## 队列支持
 
@@ -73,67 +113,112 @@ return [
 
 ```
 
-### websocket
+## Websocket
 
-> 使用路由调度的方式，可以让不同路径的websocket服务响应不同的事件
+> 使用路由调度的方式，可让不同路径的 Websocket 服务响应不同的事件。
 
-#### 配置
+### 配置
 
-```
-worker.websocket = true 时开启
-```
+在 `config/worker.php` 中设置 `websocket.enable = true` 开启，并可指定 `handler` 类。
 
-#### 路由定义
+内置 Handler 位于 `think\worker\websocket\Handler`，支持房间（Room）、事件（Event）、推送（Pusher）及 socket.io 协议。
+
+### 路由定义
 ```php
-Route::get('path1','controller/action1');
-Route::get('path2','controller/action2');
+Route::get('path1', 'controller/action1');
+Route::get('path2', 'controller/action2');
 ```
 
-#### 控制器
+### 控制器
 
 ```php
-use \think\worker\Websocket;
-use \think\worker\websocket\Frame;
+use think\worker\Websocket;
+use think\worker\websocket\Frame;
 
-class Controller {
-
-    public function action1(){
-    
+class Controller
+{
+    public function action1()
+    {
         return (new \think\worker\response\Websocket())
             ->onOpen(...)
-            ->onMessage(function(Websocket $websocket, Frame $frame){ 
-                ...
+            ->onMessage(function (Websocket $websocket, Frame $frame) {
+                // ...
             })
             ->onClose(...);
     }
-    
-    public function action2(){
-    
+
+    public function action2()
+    {
         return (new \think\worker\response\Websocket())
             ->onOpen(...)
-            ->onMessage(function(Websocket $websocket, Frame $frame){
-               ...
+            ->onMessage(function (Websocket $websocket, Frame $frame) {
+                // ...
             })
             ->onClose(...);
     }
 }
 ```
 
+### 房间与广播
 
-## 自定义worker
-监听`worker.init`事件 注入`Manager`对象，调用addWorker方法添加
+```php
+use think\worker\websocket\Room;
+
+Room::add($clientId, 'room-1');
+Room::send('room-1', 'hello room');
+```
+
+## 自定义 Worker
+
+监听 `worker.init` 事件，注入 `Manager` 对象后调用 `addWorker` 方法添加自定义 Worker：
+
 ~~~php
 use think\worker\Manager;
-use \think\worker\Worker;
+use think\worker\Worker;
 
-//...
+// ...
 
-public function handle(Manager $manager){
-   $worker = $manager->addWorker(function(Worker $worker){
-        //..其他回调或处理
-        //动态添加监听可参考 https://www.workerman.net/doc/workerman/worker/listen.html
+public function handle(Manager $manager)
+{
+    $worker = $manager->addWorker(function (Worker $worker) {
+        // 其他回调或处理
+        // 动态添加监听参考 https://www.workerman.net/doc/workerman/worker/listen.html
     });
 }
 
-//...
+// ...
 ~~~
+
+## Conduit 通道
+
+除 HTTP 与 Websocket 外，可通过 `Conduit` 驱动实现自定义 Socket 协议服务。
+内置 `Socket` 驱动支持命令（Command）/事件（Event）/结果（Result）的结构化消息交互，适用于长连接 RPC、内部通信等场景。
+
+通过 `InteractsWithConduit` 关注点（concern）在 Manager 生命周期内接入自定义协议。
+
+## 热更新 Watcher
+
+`hot_update.enable = true` 时，Watcher 会扫描 `include` 目录下的 `name` 文件（默认 `*.php`），
+检测变更后通知主进程重启，便于开发调试。
+
+```php
+'hot_update' => [
+    'enable'  => env('APP_DEBUG', false),
+    'name'    => ['*.php'],
+    'include' => [app_path(), config_path(), root_path('route')],
+    'exclude' => [],
+],
+```
+
+## Sandbox 沙盒与 Resetter
+
+每次请求进入时，通过 `Sandbox` 执行注册的 `Resetter`，重置以下状态以避免 Worker 常驻导致的数据污染：
+
+- `ClearInstances`：清空容器实例
+- `ResetConfig`：重置配置
+- `ResetEvent`：重置事件监听
+- `ResetModel`：重置模型数据
+- `ResetPaginator`：重置分页状态
+- `ResetService`：重置服务
+
+可实现 `think\worker\contract\ResetterInterface` 自定义重置器。
