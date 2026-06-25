@@ -1,5 +1,6 @@
 <?php
 
+use think\facade\Queue;
 use think\facade\Route;
 
 Route::get('/', function () {
@@ -12,6 +13,17 @@ Route::put('/', function () {
 
 Route::delete('/', function () {
     return 'delete';
+});
+
+Route::get('/queue', function () {
+    $path = sys_get_temp_dir() . '/think_worker_queue_test.log';
+    @unlink($path);
+
+    $token = hash('sha256', random_bytes(16));
+
+    Queue::push('TestJob', ['path' => $path, 'token' => $token]);
+
+    return json(['token' => $token, 'path' => $path]);
 });
 
 Route::get('/sse', function () {
