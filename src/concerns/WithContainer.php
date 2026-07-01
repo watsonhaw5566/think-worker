@@ -15,6 +15,12 @@ trait WithContainer
     protected $container;
 
     /**
+     * 命令行覆盖配置
+     * @var array
+     */
+    protected $options = [];
+
+    /**
      * Manager constructor.
      * @param App $container
      */
@@ -29,6 +35,19 @@ trait WithContainer
     }
 
     /**
+     * 设置命令行覆盖配置
+     * @param array $options
+     */
+    public function setOptions(array $options): void
+    {
+        foreach ($options as $key => $value) {
+            if ($value !== null) {
+                $this->options[$key] = $value;
+            }
+        }
+    }
+
+    /**
      * 获取配置
      * @param string $name
      * @param mixed $default
@@ -36,6 +55,10 @@ trait WithContainer
      */
     public function getConfig(string $name, $default = null)
     {
+        if (array_key_exists($name, $this->options)) {
+            return $this->options[$name];
+        }
+
         return $this->container->config->get("worker.{$name}", $default);
     }
 

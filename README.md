@@ -69,6 +69,34 @@ http://localhost:8080
 
 生产环境建议使用 supervisor 管理进程
 
+### 命令行参数
+
+可在启动时通过命令行参数临时覆盖配置文件中的 `http` 相关配置：
+
+| 参数 | 简写 | 说明 |
+|------|------|------|
+| `--port` | `-p` | HTTP 服务监听端口 |
+| `--worker-num` | `-wn` | HTTP worker 进程数 |
+
+示例：
+~~~
+# 使用配置文件默认值
+php think worker
+
+# 自定义端口
+php think worker --port 9000
+php think worker -p 9000
+
+# 自定义 worker 进程数
+php think worker --worker-num 2
+php think worker -wn 2
+
+# 同时自定义端口和进程数
+php think worker -p 9000 -wn 2
+~~~
+
+命令行参数优先级高于 `config/worker.php` 中的配置。
+
 ## 访问静态文件
 > 建议使用 nginx 反向代理来提供静态文件访问；也可使用路由输出文件内容，示例如下：
 

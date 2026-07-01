@@ -43,7 +43,7 @@ trait InteractsWithHttp
                 $this->prepareWebsocket();
             }
 
-            $workerNum = $this->getConfig('http.worker_num', 4);
+            $workerNum = (int) $this->getConfig('http.worker_num', 4);
             $this->addWorker([$this, 'createHttpServer'], 'http server', $workerNum);
         }
     }
@@ -53,7 +53,7 @@ trait InteractsWithHttp
         $this->preloadHttp();
 
         $host    = $this->getConfig('http.host');
-        $port    = $this->getConfig('http.port');
+        $port    = (int) $this->getConfig('http.port');
         $options = $this->getConfig('http.options', []);
 
         $server = new Worker("\\think\\worker\\protocols\\FlexHttp://{$host}:{$port}", $options);
