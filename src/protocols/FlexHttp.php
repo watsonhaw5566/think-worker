@@ -24,6 +24,10 @@ class FlexHttp
             return Http::decode($buffer, $connection);
         } else {
             $data = Websocket::decode($buffer, $connection);
+            // Control frames (ping/pong/close) return empty data; skip Frame creation.
+            if ($data === '') {
+                return null;
+            }
             return new Frame($connection->id, $data);
         }
     }

@@ -6,6 +6,7 @@ use think\App;
 use think\worker\concerns\ModifyProperty;
 use think\worker\contract\ResetterInterface;
 use think\worker\Sandbox;
+use Throwable;
 
 class ResetService implements ResetterInterface
 {
@@ -20,12 +21,16 @@ class ResetService implements ResetterInterface
     public function handle(App $app, Sandbox $sandbox)
     {
         foreach ($sandbox->getServices() as $service) {
-            $this->modifyProperty($service, $app);
-            if (method_exists($service, 'register')) {
-                $service->register();
-            }
-            if (method_exists($service, 'boot')) {
-                $app->invoke([$service, 'boot']);
+            try {
+                $this->modifyProperty($service, $app);
+                if (method_exists($service, 'register')) {
+                    $service->register();
+                }
+                if (method_exists($service, 'boot')) {
+                    $app->invoke([$service, 'boot']);
+                }
+            } catch (Throwable) {
+                // Individual service failures should not break the entire request lifecycle
             }
         }
     }

@@ -19,7 +19,8 @@ use Workerman\Protocols\Http\Response;
 trait InteractsWithWebsocket
 {
 
-    protected $messageSender = [];
+    /** @var array<int, callable> */
+    protected array $messageSender = [];
 
     protected function prepareWebsocket()
     {
@@ -29,8 +30,14 @@ trait InteractsWithWebsocket
 
             $this->onEvent('message', function ($message) {
                 if ($message instanceof PushMessage) {
+                    // Use WeakMap does not apply here; check closure holds the  Use array access with direct reference but I'm fixing the
                     if (isset($this->messageSender[$message->to])) {
-                        $this->messageSender[$message->to]($message->data);
+                        try {
+                            $this->messageSender[$message->to]($message->data);
+                        } catch (Throwable) {
+                            // Connection may have been closed; clean up stale entry
+                            unset($this->messageSender[$message->to]);
+                        }
                     }
                 }
             });
@@ -87,20 +94,24 @@ trait InteractsWithWebsocket
 
     public function onClose(TcpConnection $connection)
     {
-        $this->runInSandbox(function (App $app) use ($connection) {
+        // Always clean up the sender regardless of sandbox state
+        unset($this->messageSender[$connection->id]);
+
+        $this->runInSandbox(function (App $app) {
             if ($app->exists(Websocket::class)) {
                 $websocket = $app->make(Websocket::class);
-                $handler   = $app->make(HandlerInterface::class);
                 try {
+                    $handler = $app->make(HandlerInterface::class);
                     $handler->onClose();
                 } catch (Throwable $e) {
                     $this->logServerError($e);
                 }
 
-                // leave all rooms
-                $websocket->leave();
-
-                unset($this->messageSender[$connection->id]);
+                try {
+                    $websocket->leave();
+                } catch (Throwable) {
+                    // Room cleanup may fail if conduit disconnected; ignore
+                }
 
                 $websocket->setConnected(false);
             }

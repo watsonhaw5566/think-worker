@@ -73,20 +73,30 @@ class Ipc
 
     protected function decodeMessage(mixed $encoded): mixed
     {
-        $payload = json_decode((string) $encoded, true);
+        if (!is_string($encoded) || $encoded === '') {
+            return null;
+        }
+
+        $payload = json_decode($encoded, true);
         if (!is_array($payload) || !array_key_exists('_d', $payload)) {
             return null;
         }
 
         if (!empty($payload['_c']) && is_string($payload['_c']) && in_array($payload['_c'], $this->allowedClasses, true)) {
-            $reflection = new \ReflectionClass($payload['_c']);
-            $instance = $reflection->newInstanceWithoutConstructor();
-            foreach ($payload['_d'] as $key => $value) {
-                if (property_exists($instance, $key)) {
-                    $instance->$key = $value;
+            try {
+                $reflection = new \ReflectionClass($payload['_c']);
+                $instance   = $reflection->newInstanceWithoutConstructor();
+                if (is_array($payload['_d'])) {
+                    foreach ($payload['_d'] as $key => $value) {
+                        if (is_string($key) && property_exists($instance, $key)) {
+                            $instance->$key = $value;
+                        }
+                    }
                 }
+                return $instance;
+            } catch (\Throwable) {
+                return null;
             }
-            return $instance;
         }
 
         return $payload['_d'];
