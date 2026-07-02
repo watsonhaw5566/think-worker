@@ -51,7 +51,7 @@
     "sort-packages": true
   },
   "scripts": {
-    "analyze": "phpstan --memory-limit=1G",
-    "test": "phpunit --colors=always"
+    "test": "phpunit --group unit --colors",
+    "analyze": "phpstan --no-progress --memory-limit=1G"
   }
 }
