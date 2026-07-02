@@ -8,6 +8,7 @@ use think\Request;
 use think\worker\contract\websocket\HandlerInterface;
 use think\worker\Websocket;
 use think\worker\websocket\Event as WsEvent;
+use Throwable;
 use Workerman\Timer;
 
 class Handler implements HandlerInterface
@@ -60,20 +61,26 @@ class Handler implements HandlerInterface
      */
     public function onMessage(Frame $frame)
     {
-        // 收到任何消息都重置心跳超时
         if ($this->pingTimeout > 0) {
             $this->resetPingTimeout();
         }
 
-        $this->event->trigger('worker.websocket.Message', $frame);
+        try {
+            $this->event->trigger('worker.websocket.Message', $frame);
+        } catch (Throwable) {
+            // Message event errors should not break the connection
+        }
 
         $event = $this->decode($frame->data);
-        if ($event) {
-            // 收到 pong 响应，不触发业务事件
+        if ($event instanceof WsEvent) {
             if ($event->type === 'pong') {
                 return;
             }
-            $this->event->trigger('worker.websocket.Event', $event);
+            try {
+                $this->event->trigger('worker.websocket.Event', $event);
+            } catch (Throwable) {
+                // Event handler errors should not break the connection
+            }
         }
     }
 
@@ -83,8 +90,15 @@ class Handler implements HandlerInterface
     public function onClose()
     {
         Timer::del($this->pingIntervalTimer);
+        $this->pingIntervalTimer = 0;
         Timer::del($this->pingTimeoutTimer);
-        $this->event->trigger('worker.websocket.Close');
+        $this->pingTimeoutTimer = 0;
+
+        try {
+            $this->event->trigger('worker.websocket.Close');
+        } catch (Throwable) {
+            // Close event errors should not affect cleanup
+        }
     }
 
     /**
@@ -94,8 +108,12 @@ class Handler implements HandlerInterface
     {
         Timer::del($this->pingIntervalTimer);
         $this->pingIntervalTimer = Timer::delay($this->pingInterval, function () {
-            $this->websocket->push(json_encode(['type' => 'ping', 'data' => time()]));
-            $this->schedulePing();
+            try {
+                $this->websocket->push(json_encode(['type' => 'ping', 'data' => time()]));
+                $this->schedulePing();
+            } catch (Throwable) {
+                // Ping failure may indicate connection closed; stop rescheduling
+            }
         });
     }
 
@@ -106,14 +124,21 @@ class Handler implements HandlerInterface
     {
         Timer::del($this->pingTimeoutTimer);
         $this->pingTimeoutTimer = Timer::delay($this->pingTimeout, function () {
-            $this->websocket->close();
+            try {
+                $this->websocket->close();
+            } catch (Throwable) {
+                // Connection may already be closed
+            }
         });
     }
 
     protected function decode($payload)
     {
+        if (!is_string($payload) || $payload === '') {
+            return null;
+        }
         $data = json_decode($payload, true);
-        if (!empty($data['type'])) {
+        if (is_array($data) && !empty($data['type']) && is_string($data['type'])) {
             return new WsEvent($data['type'], $data['data'] ?? null);
         }
         return null;

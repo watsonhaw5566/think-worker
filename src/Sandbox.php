@@ -26,9 +26,10 @@ class Sandbox
 {
     use ModifyProperty;
 
-    protected ?App $snapshot = null;
-
     protected WeakMap $snapshots;
+
+    /** @var \SplStack<App> Stack of active snapshots for reentrancy support */
+    protected \SplStack $snapshotStack;
 
     protected App $app;
 
@@ -42,8 +43,9 @@ class Sandbox
 
     public function __construct(App $app)
     {
-        $this->app       = $app;
-        $this->snapshots = new WeakMap();
+        $this->app           = $app;
+        $this->snapshots     = new WeakMap();
+        $this->snapshotStack = new \SplStack();
         $this->initialize();
     }
 
@@ -61,16 +63,29 @@ class Sandbox
 
     public function run(Closure $callable, ?object $key = null): void
     {
-        $this->snapshot = $this->createApp($key);
+        $snapshot = $this->createApp($key);
+        $this->snapshotStack->push($snapshot);
+
+        $caughtException = null;
         try {
-            $this->snapshot->invoke($callable, [$this]);
+            $snapshot->invoke($callable, [$this]);
         } catch (Throwable $e) {
-            $this->snapshot->make(Handle::class)->report($e);
+            $caughtException = $e;
         } finally {
-            if (empty($key)) {
-                $this->snapshot->clearInstances();
+            $this->snapshotStack->pop();
+
+            if ($caughtException !== null) {
+                try {
+                    $snapshot->make(Handle::class)->report($caughtException);
+                } catch (Throwable) {
+                    // Ignore errors during error reporting to prevent cascading failures
+                }
             }
-            $this->snapshot = null;
+
+            if (empty($key)) {
+                $snapshot->clearInstances();
+            }
+
             $this->setInstance($this->app);
         }
     }
@@ -176,9 +191,8 @@ class Sandbox
 
     public function getSnapshot(): App
     {
-        $snapshot = $this->snapshot;
-        if ($snapshot instanceof App) {
-            return $snapshot;
+        if (!$this->snapshotStack->isEmpty()) {
+            return $this->snapshotStack->top();
         }
 
         throw new InvalidArgumentException('The app object has not been initialized');

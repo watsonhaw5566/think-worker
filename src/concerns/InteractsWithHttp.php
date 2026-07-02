@@ -70,6 +70,7 @@ trait InteractsWithHttp
             } elseif ($data instanceof Frame) {
                 $this->onMessage($connection, $data);
             }
+             // null $data indicates a websocket control frame (ping/pong/close), internally handled.
         };
 
         $server->onClose = function (TcpConnection $connection) {
@@ -211,10 +212,21 @@ trait InteractsWithHttp
     protected function sendIterator(TcpConnection $connection, IteratorResponse $response, Cookie $cookie)
     {
         $wkResponse = $this->createResponse($response, $cookie);
-        $connection->send($wkResponse);
+        if (!$connection->send($wkResponse)) {
+            return;
+        }
 
-        foreach ($response as $content) {
-            $connection->send($content, true);
+        try {
+            foreach ($response as $content) {
+                if (!is_string($content) || $content === '') {
+                    continue;
+                }
+                if (!$connection->send($content, true)) {
+                    break;
+                }
+            }
+        } catch (Throwable) {
+            // Iterator exceptions should not crash the connection handler
         }
     }
 

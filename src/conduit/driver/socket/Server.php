@@ -93,10 +93,22 @@ class Server
     public function onClose(TcpConnection $connection)
     {
         if (!empty($this->subscribers)) {
+            $emptyKeys = [];
             foreach ($this->subscribers as $key => $connections) {
-                $this->subscribers[$key] = array_udiff($connections, [$connection], function ($a, $b) {
-                    return $a <=> $b;
-                });
+                $filtered = [];
+                foreach ($connections as $conn) {
+                    if ($conn !== $connection) {
+                        $filtered[] = $conn;
+                    }
+                }
+                if (empty($filtered)) {
+                    $emptyKeys[] = $key;
+                } else {
+                    $this->subscribers[$key] = $filtered;
+                }
+            }
+            foreach ($emptyKeys as $key) {
+                unset($this->subscribers[$key]);
             }
         }
     }

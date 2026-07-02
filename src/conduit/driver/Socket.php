@@ -11,23 +11,27 @@ use think\worker\conduit\driver\socket\Event;
 use think\worker\conduit\driver\socket\Result;
 use think\worker\conduit\driver\socket\Server;
 use think\worker\Manager;
+use Throwable;
 use Workerman\Connection\AsyncTcpConnection;
 use Workerman\Protocols\Frame;
 use Workerman\Timer;
 
 class Socket extends Driver
 {
-    protected $id = 0;
-    protected $domain;
+    protected int $id = 0;
+    protected string $domain;
 
     /** @var AsyncTcpConnection|null */
-    protected $connection   = null;
-    protected $reconnectTimer;
-    protected $pingInterval = 55;
+    protected ?AsyncTcpConnection $connection = null;
+    protected mixed $reconnectTimer = null;
+    protected int $reconnectAttempts = 0;
+    protected int $maxReconnectAttempts = 30;
+    protected int $reconnectBaseDelay = 1;
+    protected int $pingInterval = 55;
 
     /** @var array<int, array{0: Suspension, 1: int}> */
-    protected $suspensions = [];
-    protected $events      = [];
+    protected array $suspensions = [];
+    protected array $events = [];
 
     public function __construct(protected Manager $manager)
     {
@@ -38,7 +42,6 @@ class Socket extends Driver
 
     public function prepare()
     {
-        //启动服务端
         Server::run($this->domain);
     }
 
@@ -46,19 +49,42 @@ class Socket extends Driver
     {
         $suspension       = EventLoop::getSuspension();
         $this->connection = $this->createConnection($suspension);
-        $suspension->suspend();
+
+        $timeoutAlarm = Timer::add(10, function () use ($suspension) {
+            try {
+                $suspension->throw(new Exception('conduit connection timed out'));
+            } catch (Throwable) {
+                // Suspension might already be resumed
+            }
+        }, [], false);
+
+        try {
+            $suspension->suspend();
+        } finally {
+            Timer::del($timeoutAlarm);
+        }
 
         Timer::add($this->pingInterval, function () {
-            if ($this->connection) {
-                $this->connection->send('');
+            if ($this->connection && $this->connection->getStatus()) {
+                @$this->connection->send('');
             }
         });
 
         Timer::add(1, function () {
-            //检查是否超时
+            $now     = time();
+            $expired = [];
             foreach ($this->suspensions as $id => $suspension) {
-                if (time() - $suspension[1] > 10) {
-                    $suspension[0]->throw(new Exception('conduit connection is timeout'));
+                if ($now - $suspension[1] > 10) {
+                    $expired[] = $id;
+                }
+            }
+            foreach ($expired as $id) {
+                if (isset($this->suspensions[$id])) {
+                    try {
+                        $this->suspensions[$id][0]->throw(new Exception('conduit request timeout'));
+                    } catch (Throwable) {
+                        // Already resolved
+                    }
                     unset($this->suspensions[$id]);
                 }
             }
@@ -102,28 +128,36 @@ class Socket extends Driver
 
     public function subscribe(string $name, $callback)
     {
-        $this->send(Command::create('subscribe', $name));
         $this->events[$name] = $callback;
+        if ($this->connection && $this->connection->getStatus()) {
+            try {
+                $this->send(Command::create('subscribe', $name));
+            } catch (Throwable) {
+                // Will retry after reconnect
+            }
+        }
     }
 
     protected function sendAndRecv(Command $command)
     {
         $suspension = EventLoop::getSuspension();
-
-        $id = $this->id++;
-
+        $id         = $this->id++;
         $command->id = $id;
-
         $this->suspensions[$id] = [$suspension, time()];
 
-        $this->send($command);
+        try {
+            $this->send($command);
+        } catch (Throwable $e) {
+            unset($this->suspensions[$id]);
+            throw $e;
+        }
 
         return $suspension->suspend();
     }
 
     protected function send(Command $command)
     {
-        if (!$this->connection) {
+        if (!$this->connection || !$this->connection->getStatus()) {
             throw new Exception('conduit connection is disconnected');
         }
 
@@ -142,47 +176,81 @@ class Socket extends Driver
         $this->connection->send($json);
     }
 
-    protected function createConnection(?Suspension $suspension = null)
+    protected function createConnection(?Suspension $suspension = null): AsyncTcpConnection
     {
-        $connection = new AsyncTcpConnection($this->domain);
-
+        $connection           = new AsyncTcpConnection($this->domain);
         $connection->protocol = Frame::class;
 
         $connection->onConnect = function () use ($suspension) {
+            $this->reconnectAttempts = 0;
             $this->clearTimer();
+
             if ($suspension) {
-                $suspension->resume();
+                try {
+                    $suspension->resume();
+                } catch (Throwable) {
+                    // Already resolved or cancelled
+                }
             }
-            //补订阅
-            foreach ($this->events as $name => $callback) {
-                $this->send(Command::create('subscribe', $name));
+
+            foreach (array_keys($this->events) as $name) {
+                try {
+                    $this->send(Command::create('subscribe', $name));
+                } catch (Throwable) {
+                    // Individual subscription failure should not break the connection
+                }
             }
         };
 
         $connection->onMessage = function ($connection, $buffer) {
-            $decoded = json_decode($buffer, true);
+            $decoded = json_decode((string) $buffer, true);
             if (!is_array($decoded) || !isset($decoded['type'])) {
                 return;
             }
 
             if ($decoded['type'] === 'event' && isset($decoded['name']) && isset($decoded['data'])) {
                 if (isset($this->events[$decoded['name']])) {
-                    $this->events[$decoded['name']]($decoded['data']);
+                    try {
+                        $this->events[$decoded['name']]($decoded['data']);
+                    } catch (Throwable) {
+                        // Prevent event handler exceptions from breaking the connection
+                    }
                 }
             } elseif ($decoded['type'] === 'result' && isset($decoded['id']) && isset($this->suspensions[$decoded['id']])) {
-                [$suspension] = $this->suspensions[$decoded['id']];
-                $suspension->resume($decoded['data'] ?? null);
+                $susp = $this->suspensions[$decoded['id']][0];
                 unset($this->suspensions[$decoded['id']]);
+                try {
+                    $susp->resume($decoded['data'] ?? null);
+                } catch (Throwable) {
+                    // Suspension might already be cancelled
+                }
             }
         };
 
         $connection->onClose = function () {
             $this->connection = null;
-            //重连
             $this->clearTimer();
-            $this->reconnectTimer = Timer::add(1, function () {
-                $this->connection = $this->createConnection();
-            });
+
+            foreach (array_keys($this->suspensions) as $id) {
+                try {
+                    $this->suspensions[$id][0]->throw(new Exception('conduit connection closed'));
+                } catch (Throwable) {
+                    // Already resolved
+                }
+                unset($this->suspensions[$id]);
+            }
+
+            if ($this->reconnectAttempts < $this->maxReconnectAttempts) {
+                $this->reconnectAttempts++;
+                $delay = min($this->reconnectBaseDelay * (1 << ($this->reconnectAttempts - 1)), 30);
+                $this->reconnectTimer = Timer::add($delay, function () {
+                    $this->connection = $this->createConnection();
+                }, [], false);
+            }
+        };
+
+        $connection->onError = function () {
+            // Connection errors are handled by onClose
         };
 
         $connection->connect();
@@ -190,9 +258,9 @@ class Socket extends Driver
         return $connection;
     }
 
-    protected function clearTimer()
+    protected function clearTimer(): void
     {
-        if ($this->reconnectTimer) {
+        if ($this->reconnectTimer !== null) {
             Timer::del($this->reconnectTimer);
             $this->reconnectTimer = null;
         }
