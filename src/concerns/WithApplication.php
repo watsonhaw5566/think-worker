@@ -16,7 +16,7 @@ use Throwable;
 trait WithApplication
 {
     /**
-     * @var WorkerApp
+     * @var WorkerApp|null
      */
     protected $app;
 

@@ -11,6 +11,6 @@ class QueueTest extends TestCase
     public function testQueue(): void
     {
         // 占位: 队列功能暂时无需 HTTP 启动测试
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 }

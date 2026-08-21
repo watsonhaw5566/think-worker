@@ -213,7 +213,7 @@ class HttpTest extends TestCase
         $buffer = '';
         while (!$body->eof()) {
             $text = $body->read(1);
-            if ($text === false || $text === '') {
+            if ($text === '') {
                 continue;
             }
             if ($text === "\r") {

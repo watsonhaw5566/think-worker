@@ -124,59 +124,57 @@ class WebsocketTest extends TestCase
 
     public function testWebsocket(): void
     {
-        $connected        = 0;
-        $messages         = [];
-        $errorMessage     = null;
-        $expectedMessages = 2;
+        $connected    = 0;
+        $messages     = [];
+        $errorMessage = null;
+        $closedCount  = 0;
 
-        $checkDone = function () use (&$messages, $expectedMessages) {
-            if (count($messages) >= $expectedMessages) {
-                // 所有客户端均已收到消息，安全停止事件循环
-                Loop::get()->futureTick(function () {
+        // 当 2 个客户端都关闭连接后停止事件循环
+        $onClose = function () use (&$closedCount): void {
+            $closedCount++;
+            if ($this->allClientsClosed($closedCount)) {
+                Loop::get()->futureTick(static function (): void {
                     Loop::get()->stop();
                 });
             }
         };
 
+        $onError = function ($e) use (&$errorMessage): void {
+            $errorMessage = $e instanceof Throwable ? $e->getMessage() : (string) $e;
+            Loop::get()->stop();
+        };
+
         connect('ws://127.0.0.1:' . self::PORT . '/websocket')
             ->then(
-                function (\Ratchet\Client\WebSocket $conn) use (&$connected, &$messages, &$errorMessage, $checkDone) {
+                function (\Ratchet\Client\WebSocket $conn) use (&$connected, &$messages, $onClose, $onError) {
                     $connected++;
-                    $conn->on('message', function ($msg) use ($conn, &$messages, $checkDone) {
+                    $conn->on('message', function ($msg) use ($conn, &$messages) {
                         $messages[] = (string) $msg;
                         $conn->close();
                     });
-                    $conn->on('error', function ($e) use (&$errorMessage) {
-                        $errorMessage = $e->getMessage();
-                        Loop::get()->stop();
-                    });
-                    $conn->on('close', $checkDone);
+                    $conn->on('error', $onError);
+                    $conn->on('close', $onClose);
                 },
-                function ($e) use (&$errorMessage) {
-                    $errorMessage = 'connect reject: ' . $e->getMessage();
-                    Loop::get()->stop();
+                function (Throwable $e) use ($onError) {
+                    $onError(new RuntimeException('connect reject: ' . $e->getMessage()));
                 }
             );
 
         connect('ws://127.0.0.1:' . self::PORT . '/websocket')
             ->then(
-                function (\Ratchet\Client\WebSocket $conn) use (&$connected, &$messages, &$errorMessage, $checkDone) {
+                function (\Ratchet\Client\WebSocket $conn) use (&$connected, &$messages, $onClose, $onError) {
                     $connected++;
-                    $conn->on('message', function ($msg) use ($conn, &$messages, $checkDone) {
+                    $conn->on('message', function ($msg) use ($conn, &$messages) {
                         $messages[] = (string) $msg;
                         $conn->close();
                     });
-                    $conn->on('error', function ($e) use (&$errorMessage) {
-                        $errorMessage = $e->getMessage();
-                        Loop::get()->stop();
-                    });
-                    $conn->on('close', $checkDone);
+                    $conn->on('error', $onError);
+                    $conn->on('close', $onClose);
 
                     $conn->send('hello');
                 },
-                function ($e) use (&$errorMessage) {
-                    $errorMessage = 'connect(2) reject: ' . $e->getMessage();
-                    Loop::get()->stop();
+                function (Throwable $e) use ($onError) {
+                    $onError(new RuntimeException('connect(2) reject: ' . $e->getMessage()));
                 }
             );
 
@@ -203,5 +201,14 @@ class WebsocketTest extends TestCase
 
         $this->assertSame(2, $connected, 'Expected 2 websocket clients to connect.');
         $this->assertSame(['hello', 'hello'], $messages, 'Both clients should receive the "hello" broadcast.');
+    }
+
+    /**
+     * 辅助方法：判断是否所有 WebSocket 客户端都已关闭。
+     * 抽离到单独方法用于避免 PHPStan 对闭包引用值的静态收窄。
+     */
+    private function allClientsClosed(int $closedCount): bool
+    {
+        return $closedCount >= 2;
     }
 }
