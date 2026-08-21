@@ -1,3 +1,8 @@
-composer.lock
+.idea
+.vscode
+
 vendor/
-.idea/
+
+# 缓存
+.phpunit.result.cache
+
