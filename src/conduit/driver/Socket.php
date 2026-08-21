@@ -21,7 +21,7 @@ class Socket extends Driver
     protected $domain;
 
     /** @var AsyncTcpConnection|null */
-    protected $connection   = null;
+    protected $connection = null;
     protected $reconnectTimer;
     protected $pingInterval = 55;
 

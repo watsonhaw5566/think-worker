@@ -14,6 +14,7 @@ class Ipc
     public function listenMessage()
     {
         $this->subscribe();
+
         return $this->workerId;
     }
 

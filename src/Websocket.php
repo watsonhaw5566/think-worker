@@ -108,6 +108,7 @@ class Websocket
     public function setSender(string $fd)
     {
         $this->sender = $fd;
+
         return $this;
     }
 
@@ -116,6 +117,7 @@ class Websocket
         if (empty($this->sender)) {
             throw new RuntimeException('Cannot use websocket as current client before handshake!');
         }
+
         return $this->sender;
     }
 }

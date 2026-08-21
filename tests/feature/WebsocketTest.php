@@ -8,13 +8,16 @@ use GuzzleHttp\Client;
 use PHPUnit\Framework\TestCase;
 use React\EventLoop\Loop;
 use Symfony\Component\Process\Process;
+use RuntimeException;
+use Throwable;
+
 use function Ratchet\Client\connect;
 
 class WebsocketTest extends TestCase
 {
+    protected const PORT               = 8080;
     protected static ?Process $process = null;
     protected Client $httpClient;
-    protected const PORT = 8080;
 
     protected static function killPortProcesses(): void
     {
@@ -47,6 +50,7 @@ class WebsocketTest extends TestCase
             $fp = @fsockopen('127.0.0.1', self::PORT, $errno, $errstr, 0.2);
             if ($fp !== false) {
                 fclose($fp);
+
                 return true;
             }
             usleep(100_000);
@@ -81,7 +85,8 @@ class WebsocketTest extends TestCase
             $out = self::$process->getOutput() . "\n---ERR---\n" . self::$process->getErrorOutput();
             self::$process->stop();
             self::$process = null;
-            throw new \RuntimeException('Websocket server failed to start. output: ' . $out);
+
+            throw new RuntimeException('Websocket server failed to start. output: ' . $out);
         }
     }
 
@@ -119,9 +124,9 @@ class WebsocketTest extends TestCase
 
     public function testWebsocket(): void
     {
-        $connected = 0;
-        $messages  = [];
-        $errorMessage = null;
+        $connected        = 0;
+        $messages         = [];
+        $errorMessage     = null;
         $expectedMessages = 2;
 
         $checkDone = function () use (&$messages, $expectedMessages) {
@@ -177,7 +182,7 @@ class WebsocketTest extends TestCase
 
         // 超时保护
         $timeout = false;
-        $timer = Loop::get()->addTimer(6, function () use (&$timeout) {
+        $timer   = Loop::get()->addTimer(6, function () use (&$timeout) {
             $timeout = true;
             Loop::get()->stop();
         });
@@ -186,7 +191,7 @@ class WebsocketTest extends TestCase
 
         try {
             Loop::get()->cancelTimer($timer);
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
 
         if ($errorMessage !== null) {

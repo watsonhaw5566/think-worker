@@ -8,7 +8,6 @@ use Throwable;
 
 trait WithContainer
 {
-
     /**
      * @var App
      */

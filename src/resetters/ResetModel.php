@@ -9,7 +9,6 @@ use think\worker\Sandbox;
 
 class ResetModel implements ResetterInterface
 {
-
     public function handle(App $app, Sandbox $sandbox)
     {
         if (class_exists(Model::class)) {

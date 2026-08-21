@@ -8,12 +8,13 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
+use RuntimeException;
 
 class HttpTest extends TestCase
 {
+    protected const PORT               = 8080;
     protected static ?Process $process = null;
     protected Client $httpClient;
-    protected const PORT = 8080;
 
     /**
      * 强制杀掉占用 8080 端口的残留进程，避免跨测试用例端口冲突
@@ -51,6 +52,7 @@ class HttpTest extends TestCase
             $fp = @fsockopen('127.0.0.1', self::PORT, $errno, $errstr, 0.2);
             if ($fp !== false) {
                 fclose($fp);
+
                 return true;
             }
             usleep(100_000);
@@ -89,7 +91,8 @@ class HttpTest extends TestCase
             $out = self::$process->getOutput() . "\n---ERR---\n" . self::$process->getErrorOutput();
             self::$process->stop();
             self::$process = null;
-            throw new \RuntimeException('Http server failed to start. output: ' . $out);
+
+            throw new RuntimeException('Http server failed to start. output: ' . $out);
         }
     }
 
@@ -233,6 +236,7 @@ class HttpTest extends TestCase
         }
 
         $hotFile = STUB_DIR . '/route/hot.php';
+
         try {
             $response = $this->httpClient->get('/hot');
             $this->assertSame(404, $response->getStatusCode(), 'Expect /hot to be 404 before hot file creation.');

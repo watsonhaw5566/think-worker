@@ -3,7 +3,6 @@
 namespace think\worker\websocket\socketio;
 
 use Exception;
-
 use think\Config;
 use think\Event;
 use think\Request;

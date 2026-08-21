@@ -10,7 +10,6 @@ use think\Config;
 use think\Container;
 use think\Event;
 use think\exception\Handle;
-use think\worker\App;
 use think\worker\concerns\ModifyProperty;
 use think\worker\contract\ResetterInterface;
 use think\worker\resetters\ClearInstances;
@@ -67,6 +66,7 @@ class Sandbox
     public function run(Closure $callable, ?object $key = null)
     {
         $this->snapshot = $this->createApp($key);
+
         try {
             $this->snapshot->invoke($callable, [$this]);
         } catch (Throwable $e) {
@@ -93,7 +93,7 @@ class Sandbox
         $this->resetApp($app);
 
         if (!empty($key)) {
-            $this->snapshots[$key] = new class($app) {
+            $this->snapshots[$key] = new class ($app) {
                 public function __construct(public App $app)
                 {
                 }

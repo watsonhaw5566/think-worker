@@ -9,7 +9,6 @@ use think\worker\Sandbox;
 
 class ResetPaginator implements ResetterInterface
 {
-
     public function handle(App $app, Sandbox $sandbox)
     {
         Paginator::currentPathResolver(function () use ($sandbox) {

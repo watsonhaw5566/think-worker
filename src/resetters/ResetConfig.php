@@ -8,7 +8,6 @@ use think\worker\Sandbox;
 
 class ResetConfig implements ResetterInterface
 {
-
     public function handle(App $app, Sandbox $sandbox)
     {
         $app->instance('config', clone $sandbox->getConfig());

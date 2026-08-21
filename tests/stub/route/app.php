@@ -47,5 +47,6 @@ Route::post('json', 'index/json');
 
 Route::get('static/:path', function (string $path) {
     $filename = public_path() . $path;
+
     return new \think\worker\response\File($filename);
 })->pattern(['path' => '.*\.\w+$']);
