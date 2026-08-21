@@ -7,7 +7,6 @@ namespace think\worker;
  */
 class Conduit extends \think\Manager
 {
-
     protected $namespace = "\\think\\worker\\conduit\\driver\\";
 
     protected function resolveConfig(string $name)

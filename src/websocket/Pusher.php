@@ -10,7 +10,6 @@ use think\worker\message\PushMessage;
  */
 class Pusher
 {
-
     /** @var Room */
     protected $room;
 

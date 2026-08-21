@@ -95,6 +95,7 @@ class File extends Response
             $date = DateTime::createFromFormat('U', (string) $mTime);
             $this->lastModified($date->format('D, d M Y H:i:s') . ' GMT');
         }
+
         return $this;
     }
 

@@ -6,7 +6,6 @@ use think\App;
 use think\worker\Ipc;
 use think\worker\Watcher;
 use think\worker\Worker;
-use Workerman\Redis\Client;
 
 /**
  * Trait InteractsWithServer

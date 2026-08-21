@@ -1,4 +1,5 @@
 <?php
+
 namespace think\worker;
 
 use think\worker\watcher\Driver;

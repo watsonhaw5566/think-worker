@@ -6,7 +6,6 @@ use think\worker\Conduit;
 
 class Room
 {
-
     public function __construct(protected Conduit $conduit)
     {
 

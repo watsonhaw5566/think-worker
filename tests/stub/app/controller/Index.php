@@ -10,6 +10,7 @@ class Index
     public function test()
     {
         Cookie::set('name', 'think');
+
         return 'test';
     }
 

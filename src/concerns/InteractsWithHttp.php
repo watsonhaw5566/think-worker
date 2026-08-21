@@ -20,7 +20,6 @@ use Workerman\Connection\TcpConnection;
 use Workerman\Protocols\Http\Chunk;
 use Workerman\Protocols\Http\Request as WorkerRequest;
 use Workerman\Protocols\Http\Response;
-use function substr;
 
 /**
  * Trait InteractsWithHttp
@@ -29,7 +28,8 @@ use function substr;
  */
 trait InteractsWithHttp
 {
-    use ModifyProperty, InteractsWithWebsocket;
+    use ModifyProperty;
+    use InteractsWithWebsocket;
 
     protected $wsEnable = false;
 
@@ -167,7 +167,8 @@ trait InteractsWithHttp
 
         // 重新实例化请求对象 处理请求数据
         /** @var \think\Request $request */
-        $request = $this->app->make('request', [], true);;
+        $request = $this->app->make('request', [], true);
+        ;
 
         $queryString = $wkRequest->queryString();
 
@@ -237,7 +238,7 @@ trait InteractsWithHttp
         } elseif (!$ifRange || $ifRange === $eTag || $ifRange === $lastModified) {
             $range = $request->header('Range', '');
             if (Str::startsWith($range, 'bytes=')) {
-                [$start, $end] = explode('-', substr($range, 6), 2) + [0];
+                [$start, $end] = explode('-', \substr($range, 6), 2) + [0];
 
                 $end = ('' === $end) ? $fileSize - 1 : (int) $end;
 
@@ -293,7 +294,7 @@ trait InteractsWithHttp
             if ($contentSize > $chunkSize) {
                 $sendSize = 0;
                 do {
-                    if (!$connection->send(new Chunk(substr($content, $sendSize, $chunkSize)))) {
+                    if (!$connection->send(new Chunk(\substr($content, $sendSize, $chunkSize)))) {
                         break;
                     }
                 } while (($sendSize += $chunkSize) < $contentSize);

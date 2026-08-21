@@ -24,6 +24,7 @@ class FlexHttp
             return Http::decode($buffer, $connection);
         } else {
             $data = Websocket::decode($buffer, $connection);
+
             return new Frame($connection->id, $data);
         }
     }

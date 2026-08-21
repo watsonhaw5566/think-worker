@@ -29,6 +29,7 @@ class Scan implements Driver
         foreach ($this->finder as $f) {
             $files[$f->getRealpath()] = $f->getMTime();
         }
+
         return $files;
     }
 

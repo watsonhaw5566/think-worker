@@ -11,12 +11,12 @@ use think\worker\concerns\WithContainer;
 
 class Manager
 {
-    use InteractsWithServer,
-        InteractsWithHttp,
-        InteractsWithQueue,
-        InteractsWithConduit,
-        WithApplication,
-        WithContainer;
+    use InteractsWithServer;
+    use InteractsWithHttp;
+    use InteractsWithQueue;
+    use InteractsWithConduit;
+    use WithApplication;
+    use WithContainer;
 
     protected function initialize(): void
     {

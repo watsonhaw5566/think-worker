@@ -18,7 +18,6 @@ use Workerman\Protocols\Http\Response;
 
 trait InteractsWithWebsocket
 {
-
     protected $messageSender = [];
 
     protected function prepareWebsocket()
@@ -45,6 +44,7 @@ trait InteractsWithWebsocket
             $response = $http->run($request);
             if (!$response instanceof \think\worker\response\Websocket) {
                 $connection->close();
+
                 return;
             }
 
@@ -77,6 +77,7 @@ trait InteractsWithWebsocket
     {
         $this->runInSandbox(function (App $app) use ($frame) {
             $handler = $app->make(HandlerInterface::class);
+
             try {
                 $handler->onMessage($frame);
             } catch (Throwable $e) {
@@ -91,6 +92,7 @@ trait InteractsWithWebsocket
             if ($app->exists(Websocket::class)) {
                 $websocket = $app->make(Websocket::class);
                 $handler   = $app->make(HandlerInterface::class);
+
                 try {
                     $handler->onClose();
                 } catch (Throwable $e) {
@@ -110,8 +112,8 @@ trait InteractsWithWebsocket
     protected function isWebsocketRequest(WorkerRequest $request)
     {
         $header = $request->header();
-        return strcasecmp(Arr::get($header, 'connection', ''), 'upgrade') === 0 &&
-            strcasecmp(Arr::get($header, 'upgrade', ''), 'websocket') === 0;
+
+        return strcasecmp(Arr::get($header, 'connection', ''), 'upgrade') === 0 && strcasecmp(Arr::get($header, 'upgrade', ''), 'websocket') === 0;
     }
 
     protected function upgrade(TcpConnection $connection, WorkerRequest $request)

@@ -55,6 +55,7 @@ class Handler implements HandlerInterface
         if (!empty($data['type'])) {
             return new WsEvent($data['type'], $data['data'] ?? null);
         }
+
         return null;
     }
 
@@ -66,6 +67,7 @@ class Handler implements HandlerInterface
                 'data' => $message->data,
             ]);
         }
+
         return $message;
     }
 }

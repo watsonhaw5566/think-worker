@@ -10,37 +10,37 @@ class Packet
     /**
      * Socket.io packet type `connect`.
      */
-    const CONNECT = 0;
+    public const CONNECT = 0;
 
     /**
      * Socket.io packet type `disconnect`.
      */
-    const DISCONNECT = 1;
+    public const DISCONNECT = 1;
 
     /**
      * Socket.io packet type `event`.
      */
-    const EVENT = 2;
+    public const EVENT = 2;
 
     /**
      * Socket.io packet type `ack`.
      */
-    const ACK = 3;
+    public const ACK = 3;
 
     /**
      * Socket.io packet type `connect_error`.
      */
-    const CONNECT_ERROR = 4;
+    public const CONNECT_ERROR = 4;
 
     /**
      * Socket.io packet type 'binary event'
      */
-    const BINARY_EVENT = 5;
+    public const BINARY_EVENT = 5;
 
     /**
      * Socket.io packet type `binary ack`. For acks with binary arguments.
      */
-    const BINARY_ACK = 6;
+    public const BINARY_ACK = 6;
 
     public $type;
     public $nsp  = '/';
@@ -62,6 +62,7 @@ class Packet
             $new->nsp = '/';
         }
         $new->data = $decoded['data'] ?? null;
+
         return $new;
     }
 
@@ -79,6 +80,7 @@ class Packet
         if (null !== $this->data) {
             $str .= json_encode($this->data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
+
         return $str;
     }
 
