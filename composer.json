@@ -14,7 +14,7 @@
     "topthink/framework": "^8.0",
     "revolt/event-loop": "^1.0",
     "workerman/redis": "^2.0",
-    "symfony/finder": ">=4.3"
+    "symfony/finder": "^5.4 || ^6.0 || ^7.0"
   },
   "autoload": {
     "psr-4": {
