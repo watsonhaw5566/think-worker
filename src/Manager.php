@@ -3,6 +3,7 @@
 namespace think\worker;
 
 use think\worker\concerns\InteractsWithConduit;
+use think\worker\concerns\InteractsWithCron;
 use think\worker\concerns\InteractsWithHttp;
 use think\worker\concerns\InteractsWithQueue;
 use think\worker\concerns\InteractsWithServer;
@@ -15,6 +16,7 @@ class Manager
     use InteractsWithHttp;
     use InteractsWithQueue;
     use InteractsWithConduit;
+    use InteractsWithCron;
     use WithApplication;
     use WithContainer;
 
@@ -23,5 +25,6 @@ class Manager
         $this->prepareHttp();
         $this->prepareQueue();
         $this->prepareConduit();
+        $this->prepareCron();
     }
 }
