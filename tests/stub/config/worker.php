@@ -45,11 +45,11 @@ return [
     ],
     // 内置定时任务（秒级调度，独立单进程运行）
     'cron'       => [
-        'enable'        => env('CRON_ENABLE', false),
-        'tasks'         => [],
-        'paths'         => [],
-        'store'         => null,
-        'onOneServer'   => false,
-        'tries'         => 1,
+        'enable'      => env('CRON_ENABLE', false),
+        'tasks'       => [],
+        'paths'       => [],
+        'store'       => null,
+        'onOneServer' => false,
+        'tries'       => 1,
     ],
 ];

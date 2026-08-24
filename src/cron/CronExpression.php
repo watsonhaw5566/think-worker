@@ -6,6 +6,8 @@ namespace think\worker\cron;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * 6 段 Cron 表达式解析器（秒级粒度）
@@ -56,7 +58,7 @@ class CronExpression
         }
 
         if (count($parts) !== 6) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Invalid cron expression: {$expression}. Expected 5 or 6 fields."
             );
         }
@@ -83,8 +85,8 @@ class CronExpression
             self::WEEK   => (int) $dt->format('w'),
         ];
 
-        $dayMatched  = $this->matchField(self::DAY,   $values[self::DAY]);
-        $weekMatched = $this->matchField(self::WEEK,  $values[self::WEEK]);
+        $dayMatched  = $this->matchField(self::DAY, $values[self::DAY]);
+        $weekMatched = $this->matchField(self::WEEK, $values[self::WEEK]);
         $dayIsAny    = $this->parts[self::DAY]  === '*';
         $weekIsAny   = $this->parts[self::WEEK] === '*';
 
@@ -105,8 +107,8 @@ class CronExpression
 
         return $this->matchField(self::SECOND, $values[self::SECOND])
             && $this->matchField(self::MINUTE, $values[self::MINUTE])
-            && $this->matchField(self::HOUR,   $values[self::HOUR])
-            && $this->matchField(self::MONTH,  $values[self::MONTH]);
+            && $this->matchField(self::HOUR, $values[self::HOUR])
+            && $this->matchField(self::MONTH, $values[self::MONTH]);
     }
 
     /**
@@ -120,7 +122,8 @@ class CronExpression
                 return $ts;
             }
         }
-        throw new \RuntimeException('Unable to find next run in reasonable iterations.');
+
+        throw new RuntimeException('Unable to find next run in reasonable iterations.');
     }
 
     /**
@@ -139,7 +142,7 @@ class CronExpression
 
     private function matchField(int $index, int $value): bool
     {
-        $field = $this->parts[$index];
+        $field       = $this->parts[$index];
         [$min, $max] = self::$ranges[$index];
 
         // 多个子表达式用 , 分隔
@@ -148,6 +151,7 @@ class CronExpression
                 return true;
             }
         }
+
         return false;
     }
 
@@ -158,7 +162,7 @@ class CronExpression
         // 处理 /N 步长
         if (str_contains($seg, '/')) {
             [$range, $stepStr] = explode('/', $seg, 2);
-            $step = max(1, (int) $stepStr);
+            $step              = max(1, (int) $stepStr);
             if ($range === '' || $range === '*') {
                 $range = "{$min}-{$max}";
             }
@@ -175,6 +179,7 @@ class CronExpression
             if ($value < $lo || $value > $hi) {
                 return false;
             }
+
             return ($value - $lo) % $step === 0;
         }
 
@@ -188,6 +193,7 @@ class CronExpression
         if ($value < $num || $value > $max) {
             return false;
         }
+
         return ($value - $num) % $step === 0;
     }
 }

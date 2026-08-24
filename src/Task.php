@@ -33,24 +33,24 @@ abstract class Task
     /** 6 段 cron 表达式：秒 分 时 日 月 周 */
     protected string $expression = '* * * * * *';
 
-    protected string $name         = '';
-    protected ?string $timezone    = null;
-    protected bool $enabled        = true;
+    protected string $name      = '';
+    protected ?string $timezone = null;
+    protected bool $enabled     = true;
 
     /** 仅在一台服务器执行：null=未设置, true=开启, false=显式关闭 */
-    protected ?bool $onOneServer   = null;
+    protected ?bool $onOneServer = null;
 
     /** 防重叠执行锁过期（秒），0 表示不启用 */
-    protected int $lockExpireSec   = 0;
+    protected int $lockExpireSec = 0;
 
     /** 最大尝试次数（含首次），1=不重试 */
-    protected int $tries           = 1;
+    protected int $tries = 1;
 
     /** 重试间隔（秒） */
-    protected int $retryDelaySec   = 0;
+    protected int $retryDelaySec = 0;
 
     /** @var array<int,array{0:string,1:string,2:bool}> 时区检查区间 */
-    protected array $betweenRules  = [];
+    protected array $betweenRules = [];
 
     /** @var callable[] */
     protected array $whenCallbacks = [];
@@ -93,6 +93,7 @@ abstract class Task
             array_unshift($parts, '0'); // 补秒位=0
         }
         $this->expression = implode(' ', $parts);
+
         return $this;
     }
 
@@ -124,6 +125,7 @@ abstract class Task
     public function everyMinutes(int $minutes): static
     {
         $minutes = max(1, $minutes);
+
         return $this->expression("0 */{$minutes} * * * *");
     }
 
@@ -155,6 +157,7 @@ abstract class Task
     public function at(string $time): static
     {
         [$hour, $minute] = $this->parseTime($time);
+
         return $this->expression("0 {$minute} {$hour} * * *");
     }
 
@@ -167,28 +170,51 @@ abstract class Task
     /** 工作日 */
     public function weekdays(): static
     {
-        $parts = explode(' ', $this->expression);
-        $parts[5] = '1-5';
+        $parts            = explode(' ', $this->expression);
+        $parts[5]         = '1-5';
         $this->expression = implode(' ', $parts);
+
         return $this;
     }
 
     /** 周末 */
     public function weekends(): static
     {
-        $parts = explode(' ', $this->expression);
-        $parts[5] = '0,6';
+        $parts            = explode(' ', $this->expression);
+        $parts[5]         = '0,6';
         $this->expression = implode(' ', $parts);
+
         return $this;
     }
 
-    public function mondays(): static    { return $this->days(1); }
-    public function tuesdays(): static   { return $this->days(2); }
-    public function wednesdays(): static { return $this->days(3); }
-    public function thursdays(): static  { return $this->days(4); }
-    public function fridays(): static    { return $this->days(5); }
-    public function saturdays(): static  { return $this->days(6); }
-    public function sundays(): static    { return $this->days(0); }
+    public function mondays(): static
+    {
+        return $this->days(1);
+    }
+    public function tuesdays(): static
+    {
+        return $this->days(2);
+    }
+    public function wednesdays(): static
+    {
+        return $this->days(3);
+    }
+    public function thursdays(): static
+    {
+        return $this->days(4);
+    }
+    public function fridays(): static
+    {
+        return $this->days(5);
+    }
+    public function saturdays(): static
+    {
+        return $this->days(6);
+    }
+    public function sundays(): static
+    {
+        return $this->days(0);
+    }
 
     /**
      * 指定每周的若干天（0=周日 … 6=周六）
@@ -209,9 +235,10 @@ abstract class Task
                 $flatten[] = $d;
             }
         }
-        $parts = explode(' ', $this->expression);
-        $parts[5] = implode(',', $flatten);
+        $parts            = explode(' ', $this->expression);
+        $parts[5]         = implode(',', $flatten);
         $this->expression = implode(' ', $parts);
+
         return $this;
     }
 
@@ -225,6 +252,7 @@ abstract class Task
     public function weeklyOn(int $dayOfWeek, string $time = '00:00'): static
     {
         [$hour, $minute] = $this->parseTime($time);
+
         return $this->expression("0 {$minute} {$hour} * * {$dayOfWeek}");
     }
 
@@ -238,6 +266,7 @@ abstract class Task
     public function monthlyOn(int $day, string $time = '00:00'): static
     {
         [$hour, $minute] = $this->parseTime($time);
+
         return $this->expression("0 {$minute} {$hour} {$day} * *");
     }
 
@@ -275,13 +304,15 @@ abstract class Task
     public function everySeconds(int $seconds): static
     {
         $seconds = max(1, min(59, $seconds));
+
         return $this->expression("*/{$seconds} * * * * *");
     }
 
     /** 每分钟的指定秒数组执行，例如：everySecondAt([0, 15, 30, 45]) */
     public function everySecondAt(array $seconds): static
     {
-        $seconds = array_map(fn($s) => max(0, min(59, (int) $s)), $seconds);
+        $seconds = array_map(fn ($s) => max(0, min(59, (int) $s)), $seconds);
+
         return $this->expression(implode(',', $seconds) . ' * * * * *');
     }
 
@@ -294,16 +325,28 @@ abstract class Task
     public function name(string $name): static
     {
         $this->name = $name;
+
         return $this;
     }
 
-    public function enable(): static  { $this->enabled = true;  return $this; }
-    public function disable(): static { $this->enabled = false; return $this; }
+    public function enable(): static
+    {
+        $this->enabled = true;
+
+        return $this;
+    }
+    public function disable(): static
+    {
+        $this->enabled = false;
+
+        return $this;
+    }
 
     /** 设置任务时区 */
     public function timezone(string $timezone): static
     {
         $this->timezone = $timezone;
+
         return $this;
     }
 
@@ -313,6 +356,7 @@ abstract class Task
     public function onOneServer(): static
     {
         $this->onOneServer = true;
+
         return $this;
     }
 
@@ -320,6 +364,7 @@ abstract class Task
     public function withoutOnOneServer(): static
     {
         $this->onOneServer = false;
+
         return $this;
     }
 
@@ -331,6 +376,7 @@ abstract class Task
     public function withoutOverlapping(int $minutes = 1440): static
     {
         $this->lockExpireSec = max(1, $minutes) * 60;
+
         return $this;
     }
 
@@ -344,6 +390,7 @@ abstract class Task
     {
         $this->tries         = max(1, $tries);
         $this->retryDelaySec = max(0, $delay);
+
         return $this;
     }
 
@@ -356,6 +403,7 @@ abstract class Task
     public function between(string $start, string $end): static
     {
         $this->betweenRules[] = [$start, $end, true];
+
         return $this;
     }
 
@@ -363,6 +411,7 @@ abstract class Task
     public function unlessBetween(string $start, string $end): static
     {
         $this->betweenRules[] = [$start, $end, false];
+
         return $this;
     }
 
@@ -370,6 +419,7 @@ abstract class Task
     public function when(callable $callback): static
     {
         $this->whenCallbacks[] = $callback;
+
         return $this;
     }
 
@@ -377,6 +427,7 @@ abstract class Task
     public function skip(callable $callback): static
     {
         $this->skipCallbacks[] = $callback;
+
         return $this;
     }
 
@@ -386,20 +437,53 @@ abstract class Task
      *--------------------------------------------------------------------------
      */
 
-    public function getName(): string         { return $this->name ?: static::class; }
-    public function getExpression(): string   { return $this->expression; }
-    public function getTimezone(): ?string    { return $this->timezone; }
-    public function isEnabled(): bool         { return $this->enabled; }
-    public function getOnOneServer(): ?bool   { return $this->onOneServer; }
-    public function getLockExpireSec(): int   { return $this->lockExpireSec; }
-    public function getTries(): int           { return $this->tries; }
-    public function getRetryDelaySec(): int   { return $this->retryDelaySec; }
+    public function getName(): string
+    {
+        return $this->name ?: static::class;
+    }
+    public function getExpression(): string
+    {
+        return $this->expression;
+    }
+    public function getTimezone(): ?string
+    {
+        return $this->timezone;
+    }
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
+    public function getOnOneServer(): ?bool
+    {
+        return $this->onOneServer;
+    }
+    public function getLockExpireSec(): int
+    {
+        return $this->lockExpireSec;
+    }
+    public function getTries(): int
+    {
+        return $this->tries;
+    }
+    public function getRetryDelaySec(): int
+    {
+        return $this->retryDelaySec;
+    }
     /** @return array<int,array{0:string,1:string,2:bool}> */
-    public function getBetweenRules(): array  { return $this->betweenRules; }
+    public function getBetweenRules(): array
+    {
+        return $this->betweenRules;
+    }
     /** @return callable[] */
-    public function getWhenCallbacks(): array { return $this->whenCallbacks; }
+    public function getWhenCallbacks(): array
+    {
+        return $this->whenCallbacks;
+    }
     /** @return callable[] */
-    public function getSkipCallbacks(): array { return $this->skipCallbacks; }
+    public function getSkipCallbacks(): array
+    {
+        return $this->skipCallbacks;
+    }
 
     /** 运行任务（由 Scheduler 调用） */
     public function run(): void
@@ -422,8 +506,9 @@ abstract class Task
     private function parseTime(string $time): array
     {
         $parts = explode(':', $time);
-        $h = (int) $parts[0];
-        $m = (int) ($parts[1] ?? 0);
+        $h     = (int) $parts[0];
+        $m     = (int) ($parts[1] ?? 0);
+
         return [$h, $m];
     }
 }

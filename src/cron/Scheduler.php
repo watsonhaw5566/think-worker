@@ -11,6 +11,10 @@ use think\worker\event\TaskFailed;
 use think\worker\event\TaskProcessed;
 use think\worker\event\TaskSkipped;
 use think\worker\Task;
+use DateTimeImmutable;
+use DateTimeZone;
+use InvalidArgumentException;
+use Throwable;
 
 /**
  * Crontab 调度器（秒级）
@@ -41,11 +45,11 @@ class Scheduler
 
     public function __construct(App $app, Cache $cache)
     {
-        $this->app      = $app;
-        $cronConfig     = $app->config->get('worker.cron', []);
+        $this->app  = $app;
+        $cronConfig = $app->config->get('worker.cron', []);
 
-        $storeName      = $cronConfig['store'] ?? null;
-        $this->store    = $storeName ? $cache->store($storeName) : $cache->store();
+        $storeName   = $cronConfig['store'] ?? null;
+        $this->store = $storeName ? $cache->store($storeName) : $cache->store();
 
         $this->defaultOnOneServer = (bool) ($cronConfig['onOneServer'] ?? false);
         $this->defaultTries       = (int) ($cronConfig['tries'] ?? 1);
@@ -55,7 +59,7 @@ class Scheduler
     public function add(string $taskClass): self
     {
         if (!is_subclass_of($taskClass, Task::class)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Task class {$taskClass} must extend " . Task::class
             );
         }
@@ -71,6 +75,7 @@ class Scheduler
         }
 
         $this->tasks[] = $task;
+
         return $this;
     }
 
@@ -84,6 +89,7 @@ class Scheduler
         foreach ($taskClasses as $cls) {
             $this->add($cls);
         }
+
         return $this;
     }
 
@@ -101,7 +107,7 @@ class Scheduler
      * 内部对每个任务的尝试循环做了异常处理；单个任务在全部重试失败后会通过
      * TaskFailed 事件上报并继续向外抛出异常，交由外层 Sandbox 的异常处理器记录日志。
      *
-     * @throws \Throwable 任何任务在经过所有重试仍失败时抛出
+     * @throws Throwable 任何任务在经过所有重试仍失败时抛出
      */
     public function run(int $nowTs): void
     {
@@ -111,7 +117,7 @@ class Scheduler
             }
 
             $expression = new CronExpression($task->getExpression());
-            $tz         = $task->getTimezone() ? new \DateTimeZone($task->getTimezone()) : null;
+            $tz         = $task->getTimezone() ? new DateTimeZone($task->getTimezone()) : null;
 
             if (!$expression->isDue($nowTs, $tz)) {
                 continue;
@@ -158,16 +164,18 @@ class Scheduler
 
             while (true) {
                 $attempts++;
+
                 try {
                     $task->run();
                     $this->app->event->trigger(new TaskProcessed($task));
                     break;
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     if ($attempts >= $maxAttempts) {
                         $this->app->event->trigger(new TaskFailed($task, $e, $attempts));
                         if ($overlapKey !== null) {
                             $this->store->delete($overlapKey);
                         }
+
                         throw $e;
                     }
                     if ($delay > 0) {
@@ -192,6 +200,7 @@ class Scheduler
     private function shouldRunOnOneServer(Task $task): bool
     {
         $v = $task->getOnOneServer();
+
         return $v === null ? $this->defaultOnOneServer : $v;
     }
 
@@ -205,17 +214,18 @@ class Scheduler
             return false;
         }
         $this->store->set($key, '1', $ttl);
+
         return true;
     }
 
-    private function passesBetweenRules(Task $task, int $nowTs, ?\DateTimeZone $tz): bool
+    private function passesBetweenRules(Task $task, int $nowTs, ?DateTimeZone $tz): bool
     {
         $rules = $task->getBetweenRules();
         if ($rules === []) {
             return true;
         }
 
-        $dt = new \DateTimeImmutable('@' . $nowTs);
+        $dt = new DateTimeImmutable('@' . $nowTs);
         if ($tz !== null) {
             $dt = $dt->setTimezone($tz);
         }
@@ -224,8 +234,8 @@ class Scheduler
         foreach ($rules as [$start, $end, $positive]) {
             [$sH, $sM] = array_map('intval', explode(':', $start)) + [0, 0];
             [$eH, $eM] = array_map('intval', explode(':', $end))   + [0, 0];
-            $startMin  = $sH * 60 + $sM;
-            $endMin    = $eH * 60 + $eM;
+            $startMin  = $sH * 60                                  + $sM;
+            $endMin    = $eH * 60                                  + $eM;
 
             if ($startMin <= $endMin) {
                 $inside = $nowMin >= $startMin && $nowMin <= $endMin;
@@ -242,6 +252,7 @@ class Scheduler
                 return false;
             }
         }
+
         return true;
     }
 
@@ -257,6 +268,7 @@ class Scheduler
                 return false;
             }
         }
+
         return true;
     }
 }

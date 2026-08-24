@@ -8,6 +8,11 @@ use think\helper\Arr;
 use think\worker\cron\Scheduler;
 use think\worker\Task;
 use Workerman\Timer;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use ReflectionClass;
+use SplFileInfo;
+use Throwable;
 
 /**
  * think-worker 内置 Cron 定时任务集成
@@ -73,9 +78,10 @@ trait InteractsWithCron
             }
 
             $this->triggerEvent('cron.tick_before', ['time' => $nowTs]);
+
             try {
                 $scheduler->run($nowTs);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->logServerError($e);
             }
             $this->triggerEvent('cron.tick_after', ['time' => $nowTs]);
@@ -91,12 +97,12 @@ trait InteractsWithCron
             return;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
         foreach ($iterator as $file) {
-            /** @var \SplFileInfo $file */
+            /** @var SplFileInfo $file */
             if ($file->getExtension() !== 'php') {
                 continue;
             }
@@ -116,7 +122,7 @@ trait InteractsWithCron
             }
 
             if (is_subclass_of($className, Task::class)) {
-                $ref = new \ReflectionClass($className);
+                $ref = new ReflectionClass($className);
                 if ($ref->isAbstract()) {
                     continue;
                 }

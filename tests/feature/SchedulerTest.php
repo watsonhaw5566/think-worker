@@ -11,10 +11,14 @@ use think\worker\event\TaskFailed;
 use think\worker\event\TaskProcessed;
 use think\worker\event\TaskSkipped;
 use think\worker\Task;
+use Closure;
+use InvalidArgumentException;
+use RuntimeException;
+use stdClass;
 
 /**
  * @covers \Scheduler
-  * @covers 
+  * @covers
   */
 class SchedulerTest extends TestCase
 {
@@ -33,14 +37,14 @@ class SchedulerTest extends TestCase
     /**
      * 创建匿名 Task 子类实例（使用 stub App 构造）
      *
-     * @param \Closure(Task): mixed  $configurator  通过 Fluent API 配置任务（允许链式返回 $this）
-     * @param \Closure():void        $executor      执行时的业务闭包
+     * @param Closure(Task): mixed  $configurator  通过 Fluent API 配置任务（允许链式返回 $this）
+     * @param Closure():void        $executor      执行时的业务闭包
      * @param ?class-string          $taskClass     可选：用具体类名注册（子类任务共享名字便于单服务器锁验证）
      * @return class-string<Task>
      */
     private static function makeTaskClass(
-        \Closure $configurator,
-        \Closure $executor,
+        Closure $configurator,
+        Closure $executor,
         ?string $taskClass = null
     ): string {
         // 所有动态行为注入到 tests\stubs\task\_CounterTask 静态属性。
@@ -53,10 +57,12 @@ class SchedulerTest extends TestCase
         if ($taskClass !== null) {
             // 所有测试用的 Task 子类（_CounterTask / _Stub1 / _Stub2）都实现了 public static setMeta()。
             $taskClass::setMeta($configurator, $executor);
+
             return $taskClass;
         }
 
         _CounterTask::setMeta($configurator, $executor);
+
         return _CounterTask::class;
     }
 
@@ -68,7 +74,7 @@ class SchedulerTest extends TestCase
         // ⚠️ 不要 clone self::$app：会破坏 think\Cache 等 Manager 的闭包 resolver。
         // 全类共用一个 App；但 Scheduler 必须 newInstance，避免 App 单例污染导致
         // 多个测试共用同一个 Scheduler 实例（tasks 累积）。
-        $app = self::$app;
+        $app   = self::$app;
         $cache = $app->cache;
 
         // 每次创建 Scheduler 前清空 file cache：onOneServer/overlapping 的锁会
@@ -79,7 +85,7 @@ class SchedulerTest extends TestCase
 
         // 收集事件（通过 listen 入队）。多次 listen 会重复注册 listener 没关系，
         // 因为闭包捕获不同测试方法独立的 eventBagKey，写入各自独立的 event bag。
-        $eventBagKey = self::eventBagKey();
+        $eventBagKey           = self::eventBagKey();
         $GLOBALS[$eventBagKey] = [];
         foreach ([TaskProcessed::class, TaskSkipped::class, TaskFailed::class] as $ev) {
             $app->event->listen($ev, function ($event) use ($ev, $eventBagKey) {
@@ -115,6 +121,7 @@ class SchedulerTest extends TestCase
                 $result[] = $row['payload'];
             }
         }
+
         return $result;
     }
 
@@ -130,7 +137,7 @@ class SchedulerTest extends TestCase
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
 
-        $runCount = 0;
+        $runCount  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 $t->everySecond()->name('due-task');
@@ -155,7 +162,7 @@ class SchedulerTest extends TestCase
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
 
-        $runCount = 0;
+        $runCount  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 // 每年一次，必然 not due
@@ -179,7 +186,7 @@ class SchedulerTest extends TestCase
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
 
-        $runCount = 0;
+        $runCount  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 $t->everySecond()->disable();
@@ -215,7 +222,9 @@ class SchedulerTest extends TestCase
             configurator: function (Task $t) {
                 $t->everySecond()->between('00:00', '23:59');
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
         $scheduler->add($taskClass);
         $scheduler->run(time());
@@ -235,7 +244,9 @@ class SchedulerTest extends TestCase
             configurator: function (Task $t) {
                 $t->everySecond()->unlessBetween('00:00', '23:59');
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
         $scheduler->add($taskClass);
         $scheduler->run(time());
@@ -256,15 +267,17 @@ class SchedulerTest extends TestCase
     public function testWhenAllTrueAndSkipAllFalseRuns(): void
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
-        $runCount = 0;
-        $taskClass = self::makeTaskClass(
+        $runCount    = 0;
+        $taskClass   = self::makeTaskClass(
             configurator: function (Task $t) {
                 $t->everySecond()
-                  ->when(static fn() => true)
-                  ->when(static fn() => (bool) getmypid())
-                  ->skip(static fn() => false);
+                  ->when(static fn () => true)
+                  ->when(static fn () => (bool) getmypid())
+                  ->skip(static fn () => false);
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
         $scheduler->add($taskClass);
         $scheduler->run(time());
@@ -276,12 +289,14 @@ class SchedulerTest extends TestCase
     public function testWhenAnyFalseSkipsWithCallbackReason(): void
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
-        $runCount = 0;
-        $taskClass = self::makeTaskClass(
+        $runCount    = 0;
+        $taskClass   = self::makeTaskClass(
             configurator: function (Task $t) {
-                $t->everySecond()->when(fn() => false);
+                $t->everySecond()->when(fn () => false);
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
         $scheduler->add($taskClass);
         $scheduler->run(time());
@@ -296,12 +311,14 @@ class SchedulerTest extends TestCase
     public function testSkipAnyTrueSkips(): void
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
-        $runCount = 0;
-        $taskClass = self::makeTaskClass(
+        $runCount    = 0;
+        $taskClass   = self::makeTaskClass(
             configurator: function (Task $t) {
-                $t->everySecond()->skip(fn() => true);
+                $t->everySecond()->skip(fn () => true);
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
         $scheduler->add($taskClass);
         $scheduler->run(time());
@@ -322,7 +339,7 @@ class SchedulerTest extends TestCase
         [$schedulerA] = $this->makeSchedulerWithCleanCache();
         [$schedulerB] = $this->makeSchedulerWithCleanCache(); // 共享 cache store
 
-        $runCount = 0;
+        $runCount     = 0;
         $configurator = function (Task $t) {
             // 锁名带测试方法后缀，跨测试之间锁不冲突
             $t->everySecond()->withoutOverlapping(60)->name('lock-task-overlap');
@@ -365,13 +382,15 @@ class SchedulerTest extends TestCase
         [$schedulerA] = $this->makeSchedulerWithCleanCache();
         [$schedulerB] = $this->makeSchedulerWithCleanCache();
 
-        $runCount = 0;
+        $runCount  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 // 显式锁名跨测试唯一（onOneServer 锁 TTL=70s，避免前一次运行残留）
                 $t->everySecond()->onOneServer()->name('singleton-one');
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
 
         $schedulerA->add($taskClass);
@@ -390,13 +409,15 @@ class SchedulerTest extends TestCase
         [$schedulerA] = $this->makeSchedulerWithCleanCache();
         [$schedulerB] = $this->makeSchedulerWithCleanCache();
 
-        $runCount = 0;
+        $runCount  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 // 显式关闭（尽管默认 false，但用于覆盖全局 true 场景显式测试）
                 $t->everySecond()->withoutOnOneServer()->name('multi');
             },
-            executor: function () use (&$runCount) { $runCount++; },
+            executor: function () use (&$runCount) {
+                $runCount++;
+            },
         );
 
         $schedulerA->add($taskClass);
@@ -420,7 +441,7 @@ class SchedulerTest extends TestCase
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
 
-        $attempts = 0;
+        $attempts  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 // 不用 delay 避免测试耗时
@@ -428,15 +449,17 @@ class SchedulerTest extends TestCase
             },
             executor: function () use (&$attempts) {
                 $attempts++;
-                throw new \RuntimeException('boom');
+
+                throw new RuntimeException('boom');
             },
         );
         $scheduler->add($taskClass);
 
         $caught = null;
+
         try {
             $scheduler->run(time());
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             $caught = $e;
         }
 
@@ -455,7 +478,7 @@ class SchedulerTest extends TestCase
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
 
-        $attempts = 0;
+        $attempts  = 0;
         $taskClass = self::makeTaskClass(
             configurator: function (Task $t) {
                 $t->everySecond()->tries(5, 0);
@@ -463,7 +486,7 @@ class SchedulerTest extends TestCase
             executor: function () use (&$attempts) {
                 $attempts++;
                 if ($attempts < 3) {
-                    throw new \RuntimeException('try again');
+                    throw new RuntimeException('try again');
                 }
                 // 第 3 次成功
             },
@@ -490,8 +513,8 @@ class SchedulerTest extends TestCase
         [$scheduler] = $this->makeSchedulerWithCleanCache();
 
         $classes = [
-            self::makeTaskClass(fn(Task $t) => $t->everySecond()->name('t1'), static fn() => null, taskClass: __NAMESPACE__ . '\\_Stub1'),
-            self::makeTaskClass(fn(Task $t) => $t->everySecond()->name('t2'), static fn() => null, taskClass: __NAMESPACE__ . '\\_Stub2'),
+            self::makeTaskClass(fn (Task $t) => $t->everySecond()->name('t1'), static fn () => null, taskClass: __NAMESPACE__ . '\\_Stub1'),
+            self::makeTaskClass(fn (Task $t) => $t->everySecond()->name('t2'), static fn () => null, taskClass: __NAMESPACE__ . '\\_Stub2'),
         ];
         $scheduler->addMany($classes);
 
@@ -505,8 +528,8 @@ class SchedulerTest extends TestCase
     public function testAddInvalidClassThrows(): void
     {
         [$scheduler] = $this->makeSchedulerWithCleanCache();
-        $this->expectException(\InvalidArgumentException::class);
-        $scheduler->add(\stdClass::class);
+        $this->expectException(InvalidArgumentException::class);
+        $scheduler->add(stdClass::class);
     }
 }
 
@@ -521,10 +544,10 @@ class SchedulerTest extends TestCase
 
 class _CounterTask extends Task
 {
-    private static \Closure $cfg;
-    private static \Closure $exe;
+    private static Closure $cfg;
+    private static Closure $exe;
 
-    public static function setMeta(\Closure $cfg, \Closure $exe): void
+    public static function setMeta(Closure $cfg, Closure $exe): void
     {
         self::$cfg = $cfg;
         self::$exe = $exe;
@@ -532,12 +555,12 @@ class _CounterTask extends Task
 
     protected function configure(): void
     {
-        (self::$cfg ?? static fn(Task $t) => $t->everySecond())($this);
+        (self::$cfg ?? static fn (Task $t) => $t->everySecond())($this);
     }
 
     protected function execute(): void
     {
-        (self::$exe ?? static fn() => null)();
+        (self::$exe ?? static fn () => null)();
     }
 }
 
@@ -547,10 +570,10 @@ class _CounterTask extends Task
  */
 class _Stub1 extends Task
 {
-    private static \Closure $cfg;
-    private static \Closure $exe;
+    private static Closure $cfg;
+    private static Closure $exe;
 
-    public static function setMeta(\Closure $cfg, \Closure $exe): void
+    public static function setMeta(Closure $cfg, Closure $exe): void
     {
         self::$cfg = $cfg;
         self::$exe = $exe;
@@ -558,21 +581,21 @@ class _Stub1 extends Task
 
     protected function configure(): void
     {
-        (self::$cfg ?? static fn(Task $t) => $t->everySecond())($this);
+        (self::$cfg ?? static fn (Task $t) => $t->everySecond())($this);
     }
 
     protected function execute(): void
     {
-        (self::$exe ?? static fn() => null)();
+        (self::$exe ?? static fn () => null)();
     }
 }
 
 class _Stub2 extends Task
 {
-    private static \Closure $cfg;
-    private static \Closure $exe;
+    private static Closure $cfg;
+    private static Closure $exe;
 
-    public static function setMeta(\Closure $cfg, \Closure $exe): void
+    public static function setMeta(Closure $cfg, Closure $exe): void
     {
         self::$cfg = $cfg;
         self::$exe = $exe;
@@ -580,11 +603,11 @@ class _Stub2 extends Task
 
     protected function configure(): void
     {
-        (self::$cfg ?? static fn(Task $t) => $t->everySecond())($this);
+        (self::$cfg ?? static fn (Task $t) => $t->everySecond())($this);
     }
 
     protected function execute(): void
     {
-        (self::$exe ?? static fn() => null)();
+        (self::$exe ?? static fn () => null)();
     }
 }
