@@ -43,4 +43,13 @@ return [
         'include' => [app_path(), config_path(), root_path('route')],
         'exclude' => [],
     ],
+    // 内置定时任务（秒级调度，独立单进程运行）
+    'cron'       => [
+        'enable'        => env('CRON_ENABLE', false),
+        'tasks'         => [],
+        'paths'         => [],
+        'store'         => null,
+        'onOneServer'   => false,
+        'tries'         => 1,
+    ],
 ];
