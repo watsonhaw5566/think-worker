@@ -11,9 +11,15 @@ class Scan implements Driver
     protected $finder;
 
     protected $files = [];
+    protected $interval;
+    protected $debounce;
+    protected $lastTriggerTime = 0;
 
-    public function __construct($directory, $exclude, $name)
+    public function __construct($directory, $exclude, $name, $interval = 2, $debounce = 0.5)
     {
+        $this->interval = $interval;
+        $this->debounce = $debounce;
+
         $this->finder = new Finder();
         $this->finder
             ->files()
@@ -37,13 +43,33 @@ class Scan implements Driver
     {
         $this->files = $this->findFiles();
 
-        Timer::add(2, function () use ($callback) {
-            $files = $this->findFiles();
+        Timer::add($this->interval, function () use ($callback) {
+            $files   = $this->findFiles();
+            $changed = false;
 
+            // 检测新增和修改
             foreach ($files as $path => $time) {
                 if (empty($this->files[$path]) || $this->files[$path] != $time) {
-                    call_user_func($callback);
+                    $changed = true;
                     break;
+                }
+            }
+
+            // 检测删除
+            if (!$changed) {
+                foreach (array_keys($this->files) as $path) {
+                    if (!isset($files[$path])) {
+                        $changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($changed) {
+                $now = microtime(true);
+                if ($now - $this->lastTriggerTime >= $this->debounce) {
+                    $this->lastTriggerTime = $now;
+                    call_user_func($callback);
                 }
             }
 
