@@ -87,7 +87,7 @@ return [
     'cron' => [
         'enable'  => true,                 // 开启定时任务进程（单进程 worker_num=1）
         'tasks'   => [],                   // 方式一：直接列出 Task 类名数组
-        // 'path'    => app_path('cron'), // 方式二：自动扫描该目录下的所有 Task 子类
+        // 'path'    => app_path('task'), // 方式二：自动扫描该目录下的所有 Task 子类
         // 'cache'   => null,              // 使用哪个缓存驱动实现 onOneServer / withoutOverlapping 锁
     ],
     // ...
