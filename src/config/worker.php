@@ -32,10 +32,13 @@ return [
         'workers' => [],
     ],
     'hot_update' => [
-        'enable'  => env('APP_DEBUG', false),
-        'name'    => ['*.php'],
-        'include' => [app_path(), config_path(), root_path('route')],
-        'exclude' => [],
+        'enable'   => env('APP_DEBUG', false),
+        'type'     => 'scan',
+        'name'     => ['*.php'],
+        'include'  => [app_path(), config_path(), root_path('route')],
+        'exclude'  => [],
+        'interval' => 2,
+        'debounce' => 0.5,
     ],
     // 内置定时任务（秒级调度，独立单进程运行）
     'cron'       => [

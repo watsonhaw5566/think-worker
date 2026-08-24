@@ -24,6 +24,8 @@ class Watcher extends \think\Manager
             }),
             $this->getConfig('exclude', []),
             $this->getConfig('name', []),
+            $this->getConfig('interval', 2),
+            $this->getConfig('debounce', 0.5),
         ];
     }
 
